@@ -1,5 +1,9 @@
 # Audio Features for Visualization
 
+> **Work in progress.** The interactive widgets in each lesson have not yet
+> been audited for accuracy — treat the numbers, formulas, and visualizations
+> as illustrative until that pass is done. Issues and corrections welcome.
+
 An interactive web tutorial that teaches the audio-analysis primitives behind
 music visualizers — RMS, FFT, spectral shape, onset detection, and more.
 Ten lessons, all running live in the browser with the Web Audio API.
