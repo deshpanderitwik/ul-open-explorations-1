@@ -1,0 +1,22 @@
+[package]
+name = "daw-lab"
+version = "0.1.0"
+edition = "2021"
+description = "A learning lab for DAW audio-engine internals. Each demo is runnable and measurable."
+
+# Shared, reusable building blocks (nodes, the membrane primitives) live in the lib so
+# every demo binary can pull from the same toolbox. Step 3's "why it chokes" demo will
+# reuse the SineOsc and AtomicF32 defined here.
+[lib]
+name = "daw_lab"
+path = "src/lib.rs"
+
+# Demo (A): the slider -> atomic -> oscillator membrane.
+[[bin]]
+name = "membrane"
+path = "src/bin/membrane.rs"
+
+# Release profile is what matters for any timing claim. Debug builds are 10-50x slower
+# and would lie to us about the real-time budget, so always measure with --release.
+[profile.release]
+opt-level = 3
