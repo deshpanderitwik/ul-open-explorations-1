@@ -1,0 +1,363 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>03 · Structs & impl</title>
+<style>
+  :root{
+    --bg:#0f1216; --panel:#161b22; --panel2:#1b212a; --ink:#e7edf3; --muted:#9aa7b4;
+    --line:#252c36; --amber:#f0a85c; --teal:#5fd1c4; --violet:#a78bfa; --pink:#f08ca8;
+    --green:#8fd98f;
+    --radius:16px; --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:radial-gradient(1200px 600px at 70% -10%,#18202b 0,var(--bg) 55%);
+    color:var(--ink);font-family:var(--sans);line-height:1.65;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:860px;margin:0 auto;padding:40px 24px 96px}
+  a{color:var(--teal)}
+  .back{font-family:var(--mono);font-size:13px;color:var(--muted);text-decoration:none}
+  .back:hover{color:var(--amber)}
+  .kicker{font-family:var(--mono);font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:var(--amber);margin:28px 0 8px}
+  h1{font-size:clamp(30px,5.5vw,50px);line-height:1.05;margin:0 0 14px;letter-spacing:-.025em}
+  h2{font-size:clamp(22px,3.5vw,30px);margin:8px 0 6px;letter-spacing:-.02em}
+  h3{font-size:18px;margin:0 0 4px}
+  p{color:#cdd6df;max-width:64ch}
+  p.lede{color:var(--muted);font-size:19px;max-width:60ch}
+  .muted{color:var(--muted)}
+  section{margin-top:56px}
+  hr{border:none;border-top:1px solid var(--line);margin:56px 0}
+
+  .rungs{display:flex;flex-wrap:wrap;gap:10px;margin:24px 0 8px;padding:0;list-style:none}
+  .rungs li{font-family:var(--mono);font-size:13px;border:1px solid var(--line);border-radius:999px;padding:7px 14px;color:var(--muted);background:var(--panel)}
+  .rungs li b{color:var(--muted);font-weight:600}
+  .rungs li.done{color:#cdd6df} .rungs li.done b{color:var(--green)}
+  .rungs li.active{border-color:var(--amber);color:var(--ink);background:#221a10}
+  .rungs li.active b{color:var(--amber)}
+
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:24px;margin:22px 0}
+
+  /* struct box diagram */
+  .structbox{background:#0b0e12;border:1px solid var(--line);border-radius:14px;overflow:hidden;margin:18px 0;max-width:420px}
+  .structbox .hd{font-family:var(--mono);font-size:14px;padding:12px 16px;background:#1b212a;border-bottom:1px solid var(--line)}
+  .structbox .hd b{color:var(--teal)}
+  .field{display:flex;justify-content:space-between;align-items:center;padding:14px 16px;border-bottom:1px solid var(--line);font-family:var(--mono);font-size:14px}
+  .field:last-child{border-bottom:none}
+  .field .fn{color:var(--amber)} .field .ft{color:var(--teal);font-size:12px}
+  .field .fv{color:var(--green)}
+
+  .two{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));margin-top:8px}
+  .mini{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:16px}
+  .mini h3{font-family:var(--mono);font-size:14px;margin:0 0 8px;color:var(--ink)}
+  .mini p{font-size:13.5px;color:var(--muted);margin:8px 0 0}
+  .mini code{font-size:12.5px}
+
+  pre{background:#0b0e12;border:1px solid var(--line);border-radius:12px;padding:18px;overflow-x:auto;font-family:var(--mono);font-size:13.5px;line-height:1.7;margin:14px 0;color:#d6dee7}
+  code{font-family:var(--mono);background:#0b0e12;border:1px solid var(--line);border-radius:5px;padding:1px 6px;font-size:.92em}
+  pre code{background:none;border:none;padding:0;font-size:inherit}
+  .k{color:var(--violet)} .t{color:var(--teal)} .n{color:var(--amber)} .c{color:#6b7785;font-style:italic}
+  .f{color:var(--green)} .s{color:var(--pink)} .fld{color:var(--amber)}
+
+  .why{border-left:3px solid var(--amber);background:#1a160f;border-radius:0 12px 12px 0;padding:14px 18px;margin:18px 0}
+  .why b{color:var(--amber)}
+
+  /* desugar diagram */
+  .desugar{display:flex;flex-direction:column;gap:10px;align-items:center;text-align:center;margin:16px 0}
+  .desugar code{font-size:14px;padding:10px 14px;display:inline-block}
+  .desugar .eq{color:var(--muted);font-family:var(--mono);font-size:13px}
+  .desugar .hl{color:var(--pink)}
+
+  /* interactive instance */
+  .lab{background:#0b0e12;border:1px solid var(--line);border-radius:12px;padding:20px;margin:16px 0}
+  .lab .stage{display:flex;gap:22px;flex-wrap:wrap;align-items:center;justify-content:center}
+  canvas{background:#0b0e12;border:1px solid var(--line);border-radius:50%;display:block}
+  .readout{font-family:var(--mono);font-size:13px;min-width:200px}
+  .readout .row2{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--line)}
+  .readout .row2 b{color:var(--green)} .readout .row2 .lbl{color:var(--muted)}
+  .controls{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:16px}
+  .btn{font-family:var(--mono);font-size:13px;background:var(--panel2);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:9px 14px;cursor:pointer}
+  .btn:hover{border-color:var(--amber)}
+  .btn.assoc{border-color:#3a3158} .btn.method{border-color:#5c4326}
+  input[type=range]{accent-color:var(--amber);vertical-align:middle}
+  .note{font-family:var(--mono);font-size:12.5px;color:var(--muted);margin-top:12px;min-height:34px}
+  .note b{color:var(--amber)}
+
+  .next a{display:inline-block;font-family:var(--mono);font-size:14px;text-decoration:none;border:1px solid var(--line);border-radius:10px;padding:12px 16px;color:var(--ink);margin-top:6px}
+  .next a:hover{border-color:var(--amber)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="back" href="../index.html">← sketches</a>
+
+  <p class="kicker">Rung 3 of 5 · the grammar under the demo</p>
+  <h1>Structs &amp; impl</h1>
+  <p class="lede">Last rung you met <code>self</code> without seeing what it is. Here's the
+    answer: a <b>struct</b> is a labelled box of data, and an <b>impl</b> block is where its
+    behaviour lives. Put them together and the whole <code>SineOsc</code> reads top to bottom.</p>
+
+  <ul class="rungs">
+    <li class="done"><b>1 ✓</b> · values, types, mutability</li>
+    <li class="done"><b>2 ✓</b> · functions</li>
+    <li class="active"><b>3</b> · structs + impl</li>
+    <li><b>4</b> · ownership &amp; borrowing</li>
+    <li><b>5</b> · the concurrency types</li>
+  </ul>
+
+  <!-- ===================== STRUCT = DATA ===================== -->
+  <section>
+    <h2>A struct is a labelled box of data</h2>
+    <p>Rust has no "classes." It splits the idea in two. First half: a <code>struct</code> just
+      <b>names a bundle of fields</b> — the data that belongs together. Our oscillator only needs
+      to remember two things between blocks, so that's all it holds:</p>
+
+<pre><code><span class="k">pub struct</span> <span class="t">SineOsc</span> {
+    <span class="fld">phase</span>: <span class="t">f32</span>,        <span class="c">// where we are in the wave, 0.0..1.0</span>
+    <span class="fld">sample_rate</span>: <span class="t">f32</span>,  <span class="c">// samples per second</span>
+}</code></pre>
+
+    <p>That declaration is just a <i>shape</i> — a blueprint. When you make one, you get an
+      <b>instance</b>: an actual box with those slots filled in. Picture it:</p>
+
+    <div class="structbox">
+      <div class="hd">a <b>SineOsc</b> instance</div>
+      <div class="field"><span><span class="fn">phase</span> <span class="ft">: f32</span></span><span class="fv">0.0</span></div>
+      <div class="field"><span><span class="fn">sample_rate</span> <span class="ft">: f32</span></span><span class="fv">48000.0</span></div>
+    </div>
+
+    <p>Notice the frequency is <i>not</i> in the box. That was a deliberate design choice we made
+      back in the demo: frequency changes from outside every block, so it's passed <i>into</i>
+      <code>fill</code> rather than stored. The struct holds only what must persist between calls.</p>
+  </section>
+
+  <hr/>
+
+  <!-- ===================== TWO SHAPES ===================== -->
+  <section>
+    <h2>Two shapes of struct</h2>
+    <p>Our code uses both flavours. The difference is only how you name the fields — by
+      <i>label</i> or by <i>position</i>.</p>
+
+    <div class="two">
+      <div class="mini">
+        <h3 style="color:var(--teal)">named fields</h3>
+        <pre style="margin:0"><code><span class="k">struct</span> <span class="t">SineOsc</span> {
+    <span class="fld">phase</span>: <span class="t">f32</span>,
+    <span class="fld">sample_rate</span>: <span class="t">f32</span>,
+}</code></pre>
+        <p>Reach a field by name: <code>self.phase</code>. Best when fields mean different things.</p>
+      </div>
+      <div class="mini">
+        <h3 style="color:var(--teal)">tuple struct</h3>
+        <pre style="margin:0"><code><span class="k">struct</span> <span class="t">AtomicF32</span>(<span class="t">AtomicU32</span>);</code></pre>
+        <p>One unnamed field. Reach it by position: <code>self.0</code>. A thin wrapper around a
+          single inner value — exactly our "smuggle an f32 through a u32" trick from Rung 1.</p>
+      </div>
+    </div>
+    <p class="muted" style="font-size:14px;margin-top:14px">So when you saw <code>self.0</code> in
+      <code>AtomicF32</code>, it wasn't a typo — it's "field number zero," the lone
+      <code>AtomicU32</code> inside.</p>
+  </section>
+
+  <hr/>
+
+  <!-- ===================== IMPL ===================== -->
+  <section>
+    <h2><code>impl</code>: where the behaviour lives</h2>
+    <p>Second half of the split: the struct holds data, and a separate <code>impl SineOsc { … }</code>
+      block holds its functions. Inside an impl there are <b>two kinds</b> of function, and the
+      tell is whether the first parameter is <code>self</code>:</p>
+
+    <div class="two">
+      <div class="mini">
+        <h3 style="color:var(--violet)">associated function</h3>
+        <pre style="margin:0"><code><span class="k">pub fn</span> <span class="f">new</span>(<span class="pm">sample_rate</span>: <span class="t">f32</span>) <span class="s">-&gt; Self</span> {
+    <span class="t">SineOsc</span> { <span class="fld">phase</span>: <span class="n">0.0</span>, sample_rate }
+}</code></pre>
+        <p>No <code>self</code> → it isn't called <i>on</i> an instance; it <i>makes</i> one. Called
+          as <code>SineOsc::new(48000.0)</code>. <code>Self</code> is just a shortcut for the type's
+          own name. Rust has no built-in constructor — <code>new</code> is pure convention.</p>
+      </div>
+      <div class="mini">
+        <h3 style="color:var(--amber)">method</h3>
+        <pre style="margin:0"><code><span class="k">pub fn</span> <span class="f">fill</span>(&amp;<span class="k">mut self</span>, <span class="pm">buf</span>: …, <span class="pm">freq</span>: <span class="t">f32</span>) {
+    <span class="c">// reads/writes self.phase</span>
+}</code></pre>
+        <p>First param is <code>&amp;mut self</code> → called <i>on</i> an instance:
+          <code>osc.fill(&amp;mut buf, freq)</code>. It can touch the box's fields.</p>
+      </div>
+    </div>
+
+    <p style="margin-top:18px">And here's the thing that ties Rung 2 and Rung 3 together — the
+      one that makes Rust click. <b>The dot is just sugar.</b> A method call quietly passes the
+      instance in as that first <code>self</code> parameter:</p>
+
+    <div class="desugar">
+      <code><span class="f">osc</span>.<span class="hl">fill</span>(&amp;<span class="k">mut</span> buf, freq)</code>
+      <span class="eq">is exactly the same as</span>
+      <code><span class="t">SineOsc</span>::<span class="hl">fill</span>(&amp;<span class="k">mut</span> <span class="f">osc</span>, &amp;<span class="k">mut</span> buf, freq)</code>
+      <span class="eq"><code>osc</code> simply slides into the <code>self</code> slot</span>
+    </div>
+
+    <div class="why">
+      <p style="margin:0"><b>Why it matters.</b> <code>self</code> was never magic — it's an
+        ordinary first argument with a convenient shorthand. That's why <code>&amp;mut self</code>
+        from Rung 2 followed the same borrowing rules as any other parameter: it <i>is</i> just
+        another parameter. Keep that in your pocket for Rung 4.</p>
+    </div>
+  </section>
+
+  <hr/>
+
+  <!-- ===================== INTERACTIVE ===================== -->
+  <section>
+    <h2>A live instance</h2>
+    <p>Here's one real <code>SineOsc</code> box. The dial is its <code>phase</code> field —
+      literally where it is in the cycle. Use the two buttons to call its two kinds of function
+      and watch the box respond. <span style="color:var(--violet)">Violet</span> = the associated
+      function (makes/resets the box); <span style="color:var(--amber)">amber</span> = the method
+      (changes the box it's called on).</p>
+
+    <div class="lab">
+      <div class="stage">
+        <canvas id="dial" width="180" height="180"></canvas>
+        <div class="readout">
+          <div class="row2"><span class="lbl">struct</span><b>SineOsc</b></div>
+          <div class="row2"><span class="lbl">phase</span><b id="rPhase">0.000</b></div>
+          <div class="row2"><span class="lbl">sample_rate</span><b id="rSr">48000</b></div>
+          <div class="row2"><span class="lbl">freq (passed in)</span><b id="rFreq">220</b> Hz</div>
+        </div>
+      </div>
+      <div class="controls">
+        <button class="btn assoc" id="bNew">SineOsc::new(48000)</button>
+        <button class="btn method" id="bFill">osc.fill(&amp;mut buf, freq)</button>
+        <label style="font-family:var(--mono);font-size:12.5px;color:var(--muted)">freq
+          <input id="freq" type="range" min="55" max="1760" value="220" step="1" />
+        </label>
+      </div>
+      <div class="note" id="note">Tap <b>new</b> to construct the box, then <b>fill</b> repeatedly to advance its phase one block at a time.</div>
+    </div>
+
+    <p class="muted" style="font-size:14px">Each <code>fill</code> advances <code>phase</code> by
+      one block's worth (freq ÷ sample_rate × 256), wrapping at 1.0 — the exact arithmetic from the
+      demo. <code>new</code> throws the box away and builds a fresh one with <code>phase = 0</code>.
+      Two instances would each carry their <i>own</i> phase; that independence is the whole point
+      of an instance.</p>
+  </section>
+
+  <hr/>
+
+  <!-- ===================== WHOLE THING ===================== -->
+  <section>
+    <h2>The whole <code>SineOsc</code>, now readable</h2>
+    <p>Three rungs in, every token below should land. Data in a struct; behaviour in an impl;
+      <code>new</code> builds, <code>fill</code> mutates:</p>
+<pre><code><span class="k">pub struct</span> <span class="t">SineOsc</span> {
+    <span class="fld">phase</span>: <span class="t">f32</span>,
+    <span class="fld">sample_rate</span>: <span class="t">f32</span>,
+}
+
+<span class="k">impl</span> <span class="t">SineOsc</span> {
+    <span class="k">pub fn</span> <span class="f">new</span>(<span class="pm">sample_rate</span>: <span class="t">f32</span>) <span class="s">-&gt; Self</span> {
+        <span class="t">SineOsc</span> { <span class="fld">phase</span>: <span class="n">0.0</span>, sample_rate }   <span class="c">// build the box, hand it back (no ;)</span>
+    }
+
+    <span class="k">pub fn</span> <span class="f">fill</span>(&amp;<span class="k">mut self</span>, <span class="pm">buffer</span>: <span class="t">&amp;mut [f32]</span>, <span class="pm">freq</span>: <span class="t">f32</span>) {
+        <span class="k">let</span> phase_inc = freq / <span class="k">self</span>.<span class="fld">sample_rate</span>;
+        <span class="k">for</span> sample <span class="k">in</span> buffer.iter_mut() {
+            *sample = (<span class="k">self</span>.<span class="fld">phase</span> * TAU).sin();   <span class="c">// write one sample</span>
+            <span class="k">self</span>.<span class="fld">phase</span> += phase_inc;            <span class="c">// advance — needs &mut self</span>
+            <span class="k">if</span> <span class="k">self</span>.<span class="fld">phase</span> &gt;= <span class="n">1.0</span> { <span class="k">self</span>.<span class="fld">phase</span> -= <span class="n">1.0</span>; }
+        }
+    }
+}</code></pre>
+    <p class="muted" style="font-size:14px">The only pieces still wearing a "trust me for now" label
+      are <code>&amp;mut self</code> and <code>&amp;mut [f32]</code> — the borrows. That's the entire
+      subject of the next rung.</p>
+  </section>
+
+  <hr/>
+
+  <section class="next">
+    <p class="kicker">next rung</p>
+    <h2>Ownership &amp; borrowing: the point of <code>&amp;</code> and <code>&amp;mut</code></h2>
+    <p>You've seen <code>&amp;</code> three times now and I've kept saying "borrow, full story
+      later." Rung 4 is later. It's the idea the whole language is built around — and the reason
+      the membrane's cross-thread bugs simply don't compile.</p>
+    <a href="#" onclick="return false">⟶ Rung 4 · coming in the next sketch</a>
+  </section>
+</div>
+
+<script>
+(() => {
+  const cv = document.getElementById('dial');
+  const ctx = cv.getContext('2d');
+  const rPhase = document.getElementById('rPhase');
+  const rFreq = document.getElementById('rFreq');
+  const freqEl = document.getElementById('freq');
+  const note = document.getElementById('note');
+  const SR = 48000, BLOCK = 256;
+
+  // the instance's actual state — this object IS the SineOsc box
+  let osc = null; // null until new() is called
+
+  const css = getComputedStyle(document.documentElement);
+  const amber = css.getPropertyValue('--amber').trim();
+  const teal  = css.getPropertyValue('--teal').trim();
+  const line  = css.getPropertyValue('--line').trim();
+  const muted = css.getPropertyValue('--muted').trim();
+
+  function draw() {
+    const W = cv.width, H = cv.height, cx = W/2, cy = H/2, r = 70;
+    ctx.clearRect(0,0,W,H);
+    // dial face
+    ctx.strokeStyle = line; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2); ctx.stroke();
+    if (osc === null) {
+      ctx.fillStyle = muted; ctx.font = '12px ui-monospace, monospace';
+      ctx.textAlign = 'center'; ctx.fillText('no instance', cx, cy-4);
+      ctx.fillText('call new()', cx, cy+12);
+      rPhase.textContent = '—';
+      return;
+    }
+    // phase arc (how far around)
+    const ang = osc.phase * Math.PI*2 - Math.PI/2;
+    ctx.strokeStyle = amber; ctx.lineWidth = 4;
+    ctx.beginPath(); ctx.arc(cx,cy,r,-Math.PI/2,ang); ctx.stroke();
+    // hand
+    ctx.strokeStyle = teal; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(cx,cy); ctx.lineTo(cx + Math.cos(ang)*r, cy + Math.sin(ang)*r); ctx.stroke();
+    // hub + label
+    ctx.fillStyle = teal; ctx.beginPath(); ctx.arc(cx,cy,5,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle = amber; ctx.font = '13px ui-monospace, monospace'; ctx.textAlign='center';
+    ctx.fillText('phase', cx, cy+r+22);
+    rPhase.textContent = osc.phase.toFixed(3);
+  }
+
+  freqEl.addEventListener('input', () => { rFreq.textContent = freqEl.value; });
+
+  document.getElementById('bNew').addEventListener('click', () => {
+    osc = { phase: 0.0, sample_rate: SR };   // SineOsc { phase: 0.0, sample_rate }
+    note.innerHTML = '<b>SineOsc::new</b> ran: it built a fresh box and returned it. phase is back to 0.000. (Associated function — no self, it makes the instance.)';
+    draw();
+  });
+
+  document.getElementById('bFill').addEventListener('click', () => {
+    if (osc === null) {
+      note.innerHTML = 'There\'s no instance yet — <b>fill</b> is a method, it needs a box to be called on. Tap <b>new</b> first.';
+      return;
+    }
+    const freq = parseFloat(freqEl.value);
+    osc.phase += (freq / osc.sample_rate) * BLOCK; // advance one block's worth
+    osc.phase -= Math.floor(osc.phase);            // wrap into 0..1
+    note.innerHTML = '<b>osc.fill</b> ran: borrowed osc as <b>&mut self</b>, so it was allowed to advance phase by freq÷sample_rate×256. The box changed in place.';
+    draw();
+  });
+
+  draw();
+})();
+</script>
+</body>
+</html>
