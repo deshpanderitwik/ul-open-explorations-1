@@ -1,0 +1,296 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>02 · Functions</title>
+<style>
+  :root{
+    --bg:#0f1216; --panel:#161b22; --panel2:#1b212a; --ink:#e7edf3; --muted:#9aa7b4;
+    --line:#252c36; --amber:#f0a85c; --teal:#5fd1c4; --violet:#a78bfa; --pink:#f08ca8;
+    --green:#8fd98f;
+    --radius:16px; --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:radial-gradient(1200px 600px at 70% -10%,#18202b 0,var(--bg) 55%);
+    color:var(--ink);font-family:var(--sans);line-height:1.65;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:860px;margin:0 auto;padding:40px 24px 96px}
+  a{color:var(--teal)}
+  .back{font-family:var(--mono);font-size:13px;color:var(--muted);text-decoration:none}
+  .back:hover{color:var(--amber)}
+  .kicker{font-family:var(--mono);font-size:12px;letter-spacing:.18em;text-transform:uppercase;
+    color:var(--amber);margin:28px 0 8px}
+  h1{font-size:clamp(30px,5.5vw,50px);line-height:1.05;margin:0 0 14px;letter-spacing:-.025em}
+  h2{font-size:clamp(22px,3.5vw,30px);margin:8px 0 6px;letter-spacing:-.02em}
+  h3{font-size:18px;margin:0 0 4px}
+  p{color:#cdd6df;max-width:64ch}
+  p.lede{color:var(--muted);font-size:19px;max-width:60ch}
+  .muted{color:var(--muted)}
+  section{margin-top:56px}
+  hr{border:none;border-top:1px solid var(--line);margin:56px 0}
+
+  .rungs{display:flex;flex-wrap:wrap;gap:10px;margin:24px 0 8px;padding:0;list-style:none}
+  .rungs li{font-family:var(--mono);font-size:13px;border:1px solid var(--line);
+    border-radius:999px;padding:7px 14px;color:var(--muted);background:var(--panel)}
+  .rungs li b{color:var(--muted);font-weight:600}
+  .rungs li.done{color:#cdd6df}
+  .rungs li.done b{color:var(--green)}
+  .rungs li.active{border-color:var(--amber);color:var(--ink);background:#221a10}
+  .rungs li.active b{color:var(--amber)}
+
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:24px;margin:22px 0}
+
+  /* function anatomy diagram */
+  .anatomy{background:#0b0e12;border:1px solid var(--line);border-radius:12px;padding:28px 18px 18px;
+    font-family:var(--mono);font-size:clamp(13px,3.6vw,17px);overflow-x:auto;margin:16px 0}
+  .anatomy .sig{white-space:nowrap;display:inline-block}
+  .tok{position:relative;padding:2px 1px;border-radius:4px}
+  .tok.kw{color:var(--violet)} .tok.nm{color:var(--green)} .tok.pm{color:var(--amber)}
+  .tok.ty{color:var(--teal)} .tok.rt{color:var(--pink)}
+  .legend{display:grid;gap:8px;margin-top:18px;grid-template-columns:repeat(auto-fit,minmax(180px,1fr))}
+  .legend div{font-family:var(--mono);font-size:12.5px;color:var(--muted)}
+  .legend .sw{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:7px;vertical-align:middle}
+
+  /* in/out machine */
+  .machine{display:flex;align-items:center;gap:14px;flex-wrap:wrap;justify-content:center;margin:18px 0}
+  .machine .box{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:14px 18px;
+    font-family:var(--mono);font-size:13px;text-align:center;min-width:120px}
+  .machine .box.core{border-color:var(--amber);background:#221a10}
+  .machine .arrow{color:var(--muted);font-size:22px}
+  .machine .box small{display:block;color:var(--muted);font-size:11px;margin-top:4px}
+
+  pre{background:#0b0e12;border:1px solid var(--line);border-radius:12px;padding:18px;overflow-x:auto;
+    font-family:var(--mono);font-size:14px;line-height:1.7;margin:14px 0;color:#d6dee7}
+  code{font-family:var(--mono);background:#0b0e12;border:1px solid var(--line);border-radius:5px;padding:1px 6px;font-size:.92em}
+  pre code{background:none;border:none;padding:0;font-size:inherit}
+  .k{color:var(--violet)} .t{color:var(--teal)} .n{color:var(--amber)} .c{color:#6b7785;font-style:italic}
+  .f{color:var(--green)} .s{color:var(--pink)}
+
+  .why{border-left:3px solid var(--amber);background:#1a160f;border-radius:0 12px 12px 0;padding:14px 18px;margin:18px 0}
+  .why b{color:var(--amber)}
+
+  /* self table */
+  .selftab{width:100%;border-collapse:collapse;margin-top:8px;font-size:14px}
+  .selftab th,.selftab td{text-align:left;padding:11px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+  .selftab th{color:var(--muted);font-weight:600;font-family:var(--mono);font-size:12px;text-transform:uppercase;letter-spacing:.08em}
+  .selftab code{font-size:13px}
+  .selftab td:first-child{white-space:nowrap}
+
+  /* interactive signature decoder */
+  .decoder{background:#0b0e12;border:1px solid var(--line);border-radius:12px;padding:22px 16px;margin:16px 0}
+  .sigline{font-family:var(--mono);font-size:clamp(13px,3.8vw,18px);line-height:2.2;word-break:break-word}
+  .chip{cursor:pointer;border-radius:6px;padding:3px 5px;border:1px solid transparent;transition:.12s;white-space:nowrap}
+  .chip:hover{border-color:var(--muted)}
+  .chip.sel{background:#221a10;border-color:var(--amber)}
+  .chip.now{color:var(--green)} .chip.prev{color:var(--violet)}
+  .chip.plain{color:#cdd6df}
+  .explain{margin-top:18px;border-top:1px solid var(--line);padding-top:16px;min-height:96px}
+  .explain .tag{display:inline-block;font-family:var(--mono);font-size:11px;letter-spacing:.06em;
+    border-radius:999px;padding:3px 10px;margin-bottom:8px}
+  .explain .tag.now{background:#16291a;color:var(--green);border:1px solid #2c4a30}
+  .explain .tag.prev{background:#211a33;color:var(--violet);border:1px solid #3a3158}
+  .explain h3{font-family:var(--mono);font-size:16px;margin:0 0 6px;color:var(--ink)}
+  .explain p{margin:0;font-size:14.5px;color:#cdd6df}
+  .hint{font-family:var(--mono);font-size:12px;color:var(--muted);margin-top:10px}
+
+  .next a{display:inline-block;font-family:var(--mono);font-size:14px;text-decoration:none;
+    border:1px solid var(--line);border-radius:10px;padding:12px 16px;color:var(--ink);margin-top:6px}
+  .next a:hover{border-color:var(--amber)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="back" href="../index.html">← sketches</a>
+
+  <p class="kicker">Rung 2 of 5 · the grammar under the demo</p>
+  <h1>Functions</h1>
+  <p class="lede">A function is a labelled machine: data goes in, a value comes out. Once you
+    can read the <b>signature</b> — the line that names the inputs and the output — the rest
+    of the code stops looking like punctuation soup.</p>
+
+  <ul class="rungs">
+    <li class="done"><b>1 ✓</b> · values, types, mutability</li>
+    <li class="active"><b>2</b> · functions</li>
+    <li><b>3</b> · structs + impl</li>
+    <li><b>4</b> · ownership &amp; borrowing</li>
+    <li><b>5</b> · the concurrency types</li>
+  </ul>
+
+  <!-- ===================== ANATOMY ===================== -->
+  <section>
+    <h2>The shape of every function</h2>
+    <p>Here is a real one from our code — <code>sparkline</code>, the helper that turns a buffer
+      into the little ▁▂▇█ waveform. It's a good first example because it's a plain function:
+      no <code>self</code>, no <code>&amp;mut</code> yet. Every part has a job:</p>
+
+    <div class="anatomy">
+      <span class="sig"><span class="tok kw">pub fn</span> <span class="tok nm">sparkline</span>(<span class="tok pm">buffer</span>: <span class="tok ty">&amp;[f32]</span>, <span class="tok pm">width</span>: <span class="tok ty">usize</span>) <span class="tok rt">-&gt; String</span> { … }</span>
+      <div class="legend">
+        <div><span class="sw" style="background:var(--violet)"></span><code>pub fn</code> — "a public function follows"</div>
+        <div><span class="sw" style="background:var(--green)"></span><code>sparkline</code> — its name</div>
+        <div><span class="sw" style="background:var(--amber)"></span><code>buffer</code>, <code>width</code> — parameter names</div>
+        <div><span class="sw" style="background:var(--teal)"></span><code>&amp;[f32]</code>, <code>usize</code> — each param's type</div>
+        <div><span class="sw" style="background:var(--pink)"></span><code>-&gt; String</code> — the type it hands back</div>
+      </div>
+    </div>
+
+    <p>The rule for parameters is the same one from Rung 1, repeated: <b>every input is
+      <code>name: Type</code></b>. Reading left to right: a public function called
+      <code>sparkline</code> takes a buffer and a width, and gives you back a <code>String</code>.
+      The arrow <code>-&gt;</code> always points at what comes out.</p>
+
+    <div class="machine">
+      <div class="box"><b>&amp;[f32]</b><small>a buffer to look at</small></div>
+      <div class="box"><b>usize</b><small>how wide</small></div>
+      <div class="arrow">→</div>
+      <div class="box core"><b>sparkline</b><small>the machine</small></div>
+      <div class="arrow">→</div>
+      <div class="box"><b>String</b><small>"▁▂▃▅▇█▅▃"</small></div>
+    </div>
+  </section>
+
+  <hr/>
+
+  <!-- ===================== RETURN ===================== -->
+  <section>
+    <h2>What comes out — and the no-semicolon trick</h2>
+    <p>Two things about returns trip up newcomers. First: if there's <b>no</b> <code>-&gt;</code>,
+      the function returns nothing — Rust calls that <code>()</code>, "unit." Second, and this is
+      the genuinely Rust-y part: <b>the last line without a semicolon <i>is</i> the return
+      value.</b> No <code>return</code> keyword needed. A semicolon ends a statement; leaving it
+      off turns the line into "the value this block evaluates to."</p>
+
+    <p>Both patterns live in <code>AtomicF32</code>, side by side:</p>
+<pre><code><span class="c">// Returns a value. Note: no semicolon on the last line → that's what comes back.</span>
+<span class="k">pub fn</span> <span class="f">load</span>(&amp;<span class="k">self</span>) <span class="s">-&gt; f32</span> {
+    <span class="t">f32</span>::from_bits(<span class="k">self</span>.<span class="n">0</span>.load(Ordering::Relaxed))   <span class="c">// ← no ; = return this</span>
+}
+
+<span class="c">// No arrow → returns nothing (unit). Its job is the side effect: writing the value.</span>
+<span class="k">pub fn</span> <span class="f">store</span>(&amp;<span class="k">self</span>, <span class="pm">value</span>: <span class="t">f32</span>) {
+    <span class="k">self</span>.<span class="n">0</span>.store(value.to_bits(), Ordering::Relaxed);  <span class="c">// ← ends in ; = a statement, nothing returned</span>
+}</code></pre>
+
+    <div class="why">
+      <p style="margin:0"><b>Why it matters.</b> Rust is <i>expression-oriented</i>: almost
+        everything evaluates to a value, so the "last expression is the result" rule shows up
+        everywhere — in <code>if</code>, in blocks, in match arms. Once you stop scanning for
+        a <code>return</code> keyword and start reading "what does this block evaluate to?",
+        huge amounts of Rust suddenly parse.</p>
+    </div>
+  </section>
+
+  <hr/>
+
+  <!-- ===================== SELF ===================== -->
+  <section>
+    <h2>The special first parameter: <code>self</code></h2>
+    <p>Some functions are attached to a type — those are <b>methods</b>, and their first
+      parameter is <code>self</code> (the thing the method is called on, like
+      <code>osc.fill(...)</code>). There are three forms, and the difference is exactly the
+      mutability idea from Rung 1, applied to "myself." This is also your first glimpse of the
+      <code>&amp;</code> symbol — the doorway to ownership we open fully in Rung 4.</p>
+
+    <table class="selftab">
+      <tr><th>form</th><th>means</th><th>in our code</th></tr>
+      <tr>
+        <td><code>&amp;self</code></td>
+        <td>"lend me a <i>read-only</i> look at myself." Can't change anything.</td>
+        <td><code>load(&amp;self)</code> — just reads the stored bits.</td>
+      </tr>
+      <tr>
+        <td><code>&amp;mut self</code></td>
+        <td>"lend me myself <i>with permission to change</i> my fields."</td>
+        <td><code>fill(&amp;mut self, …)</code> — it advances the oscillator's <code>phase</code>.</td>
+      </tr>
+      <tr>
+        <td><code>self</code></td>
+        <td>"give me the whole thing, I'm taking ownership." (Rare; none in our demo yet.)</td>
+        <td>—</td>
+      </tr>
+    </table>
+
+    <p class="muted" style="font-size:14px;margin-top:16px">The <code>&amp;</code> is the heart of
+      it: it means <b>borrow</b>, not take. <code>&amp;self</code> borrows to read,
+      <code>&amp;mut self</code> borrows to write. Hold that intuition — Rung 4 is entirely about
+      why borrowing is the mechanism that keeps two threads from corrupting each other.</p>
+  </section>
+
+  <hr/>
+
+  <!-- ===================== INTERACTIVE DECODER ===================== -->
+  <section>
+    <h2>Decode the real thing</h2>
+    <p>Here's the signature I promised you — the oscillator's <code>fill</code> method, the busiest
+      line in the demo. Tap any piece to see what it does. <span class="now"
+      style="color:var(--green)">Green</span> = grammar you already own from Rungs 1–2;
+      <span class="prev" style="color:var(--violet)">violet</span> = a preview of Rungs 3–4.</p>
+
+    <div class="decoder">
+      <div class="sigline" id="sig">
+        <span class="chip now"   data-k="pub">pub</span>
+        <span class="chip now"   data-k="fn">fn</span>
+        <span class="chip plain" data-k="fill">fill</span><span class="muted">(</span><span class="chip prev" data-k="self">&amp;mut self</span><span class="muted">,</span>
+        <span class="chip prev"  data-k="buffer">buffer: &amp;mut [f32]</span><span class="muted">,</span>
+        <span class="chip now"   data-k="freq">freq: f32</span><span class="muted">)</span>
+        <span class="chip now"   data-k="ret">⟂ no arrow</span>
+      </div>
+      <div class="explain" id="explain">
+        <span class="tag now">tap a piece</span>
+        <h3>The whole sentence</h3>
+        <p>"A public function called <b>fill</b>, called on an oscillator it may modify, takes a
+          buffer it will write into and a frequency, and returns nothing." Tap each part to go
+          deeper.</p>
+      </div>
+      <div class="hint">tip: the two violet pieces are the <code>&amp;</code> / <code>&amp;mut</code> borrows — full story in Rung 4</div>
+    </div>
+
+    <p class="muted" style="font-size:14px">Notice there's no <code>-&gt;</code>: <code>fill</code>
+      returns nothing. Its entire purpose is the <i>side effect</i> — leaving new samples in the
+      buffer the caller handed it. That's why the audio thread can call it every block and just
+      read the buffer afterward.</p>
+  </section>
+
+  <hr/>
+
+  <section class="next">
+    <p class="kicker">next rung</p>
+    <h2>Structs &amp; impl: where <code>self</code> comes from</h2>
+    <p>You've now met <code>self</code> without seeing what it <i>is</i>. Rung 3 is the answer:
+      a <code>struct</code> bundles data (the oscillator's <code>phase</code> and
+      <code>sample_rate</code>), and an <code>impl</code> block is where its methods live. Then
+      the whole <code>SineOsc</code> finally reads top to bottom.</p>
+    <a href="#" onclick="return false">⟶ Rung 3 · coming in the next sketch</a>
+  </section>
+</div>
+
+<script>
+(() => {
+  const data = {
+    pub:  ['now','pub','Visibility. By default a function is private to its own module; <code>pub</code> makes it callable from outside — here, from the binary that uses the library.'],
+    fn:   ['now','fn','The keyword that announces "a function is being defined." Everything after it is the signature.'],
+    fill: ['now','fill','The function\'s name. You call it as <code>osc.fill(&buffer, freq)</code> — the dot means "call this method on osc."'],
+    self: ['prev','&mut self','The method\'s special first parameter: the oscillator itself, borrowed <i>mutably</i>. fill needs write access because it advances <code>self.phase</code> every sample. The <code>&</code> means "borrowed, not taken"; <code>mut</code> means "allowed to change." Full story: Rung 4.'],
+    buffer:['prev','buffer: &mut [f32]','A parameter named <code>buffer</code>, whose type is "a mutable borrow of a slice of f32." A <i>slice</i> <code>[f32]</code> is a view into a run of samples the caller owns; <code>&mut</code> means fill may write into it but doesn\'t own it. This is how the filled samples get back to the audio thread without copying. Full story: Rung 4.'],
+    freq: ['now','freq: f32','A plain value parameter — one 32-bit float, copied in. This is the number that crossed the membrane: the audio thread loaded it from the AtomicF32, then passed it here. Pure Rung 1 grammar.'],
+    ret:  ['now','(no -> arrow)','There is no return type, so <code>fill</code> returns <code>()</code> — "unit," i.e. nothing. Its value is its <i>side effect</i>: the buffer is full of new samples when it returns.'],
+  };
+  const sig = document.getElementById('sig');
+  const ex  = document.getElementById('explain');
+  sig.querySelectorAll('.chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      sig.querySelectorAll('.chip').forEach(c => c.classList.remove('sel'));
+      chip.classList.add('sel');
+      const [kind, title, body] = data[chip.dataset.k];
+      const tag = kind === 'now'
+        ? '<span class="tag now">✓ Rungs 1–2 — you own this</span>'
+        : '<span class="tag prev">→ preview · Rung 4</span>';
+      ex.innerHTML = `${tag}<h3>${title}</h3><p>${body}</p>`;
+    });
+  });
+})();
+</script>
+</body>
+</html>
