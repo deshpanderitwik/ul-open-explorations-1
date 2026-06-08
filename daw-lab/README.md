@@ -7,6 +7,10 @@ small Rust program you can execute yourself and watch/measure, std-only for now 
 This lab is intentionally separate from the rest of this repo (which is a web tutorial on
 audio-analysis features). It's a parallel curiosity track about *engine internals*.
 
+See [`NOTION.md`](./NOTION.md) for the roadmap: how the demos ladder up from one
+component toward a full DAW, and the two distinct kinds of "talk" (parameters
+across threads vs. audio across nodes) that the whole design turns on.
+
 ## The learning arc
 
 1. The real-time deadline & the audio callback ✅
