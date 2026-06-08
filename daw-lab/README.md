@@ -58,10 +58,25 @@ demo measures **static vs. dynamic dispatch** — calling the nodes directly vs.
 runtime `Vec<Box<dyn Node>>`. The result: within measurement noise, so the runtime-built
 graph a real DAW needs costs nothing meaningful.
 
+### `mix` — voices → mixer → gain (Experiment 2)
+
+```sh
+cargo run --release --bin mix
+```
+
+The first graph with fan-in: several oscillators sum into a mixer, then run through the
+`Gain` node. You can see two tones interfere into a lumpier "chord" waveform. Then it settles
+the first architecture bet — **where the audio physically lives** — by measuring two summing
+strategies (a buffer per voice vs. one shared accumulator bus) across 1–64 voices. The
+surprise: per-voice buffers are ~45% *faster* (the sum vectorizes; the accumulator doesn't),
+so "always accumulate" is backwards at this scale — the bus's real advantage is memory and
+routing, not speed. A worked example of measuring before committing.
+
 ## Layout
 
 ```
 src/lib.rs            AtomicF32 (membrane), Node trait, SineOsc (source), Gain (transform), sparkline
 src/bin/membrane.rs   Demo (A) — the membrane
 src/bin/chain.rs      Experiment 1 — osc → gain + dispatch measurement
+src/bin/mix.rs        Experiment 2 — voices → mixer → gain + buffer-layout measurement
 ```

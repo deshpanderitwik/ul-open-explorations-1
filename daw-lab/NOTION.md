@@ -69,9 +69,13 @@ so the graph can hold a list of *different* nodes and run them uniformly.
    and scales it in place). Also settles the dispatch question: static vs.
    `Vec<Box<dyn Node>>` is within measurement noise, so the runtime-built graph
    a DAW needs costs nothing meaningful. The whole chain is ~0.03% of budget.
-3. **A tiny Graph.** A struct that owns N nodes and runs them in a fixed order.
-   Add a second oscillator + a mixer node → the first real "mini-mix" (two
-   sources summed into one block).
+3. **The first graph: voices → mixer → gain.** ✅ `bin/mix` — sources fan into a
+   mixer (the first multi-input node), then through the `Gain` node. Settles the
+   buffer-layout bet by measurement, with a surprise: per-voice buffers beat a
+   single accumulator bus by ~45% (flat across 1–64 voices), because the sum
+   isolates into a vectorizable loop while accumulation fuses into the
+   un-vectorizable oscillator loop. "Always accumulate" was backwards at this
+   scale — the bus's real edge is memory (1 KB vs N KB) and routing, not speed.
 4. **Knobs on everything.** A membrane per node parameter; one UI thread
    automating several at once. Now both axes are live simultaneously.
 5. **Time.** A `Transport`/clock (sample position, tempo) and a sequencer node

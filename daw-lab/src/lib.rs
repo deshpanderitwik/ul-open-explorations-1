@@ -122,6 +122,23 @@ impl SineOsc {
             }
         }
     }
+
+    /// Like `fill`, but *adds* `gain * sin` into the buffer instead of overwriting it.
+    ///
+    /// This is what an accumulating mixer uses: every voice adds its contribution
+    /// directly into one shared "bus" buffer that stays hot in cache, instead of each
+    /// voice owning a separate buffer the mixer must then stream back in to sum. Same
+    /// real-time guarantees as `fill` — no allocation, no locks, bounded cost.
+    pub fn fill_add(&mut self, buffer: &mut [f32], freq: f32, gain: f32) {
+        let phase_inc = freq / self.sample_rate;
+        for sample in buffer.iter_mut() {
+            *sample += gain * (self.phase * TAU).sin();
+            self.phase += phase_inc;
+            if self.phase >= 1.0 {
+                self.phase -= 1.0;
+            }
+        }
+    }
 }
 
 impl Node for SineOsc {
