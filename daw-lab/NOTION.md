@@ -64,10 +64,11 @@ so the graph can hold a list of *different* nodes and run them uniformly.
 ## The ladder (each rung = one runnable bin, measured against the 5.3 ms budget)
 
 1. **One node + one membrane.** ✅ `bin/membrane` — slider → atomic → osc.
-2. **Two nodes that talk: `osc → gain`.** Introduce the `Node` trait and manual
-   wiring. The "talk" is: osc fills the buffer, gain reads and scales the *same*
-   buffer in place. Prove total fill is still well under budget. *(Suggested
-   next step — new `bin/chain`.)*
+2. **Two nodes that talk: `osc → gain`.** ✅ `bin/chain` — introduces the `Node`
+   trait and the first node-to-node hand-off (osc fills the buffer, gain reads
+   and scales it in place). Also settles the dispatch question: static vs.
+   `Vec<Box<dyn Node>>` is within measurement noise, so the runtime-built graph
+   a DAW needs costs nothing meaningful. The whole chain is ~0.03% of budget.
 3. **A tiny Graph.** A struct that owns N nodes and runs them in a fixed order.
    Add a second oscillator + a mixer node → the first real "mini-mix" (two
    sources summed into one block).

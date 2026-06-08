@@ -44,9 +44,24 @@ boundary (the atomic `load` at the top of each block), never mid-buffer.
 The per-block `fill` time is printed against the 5.3 ms budget — right now it's a rounding
 error. Step 3 is about watching that number grow until it blows the budget.
 
+### `chain` — osc → gain (Experiment 1)
+
+```sh
+cargo run --release --bin chain
+```
+
+The first node-to-node hand-off — "two components that talk." An oscillator (a source)
+fills a block; a `Gain` (a transform) reads that same block and scales it in place. Both
+implement the new `Node` trait, so a graph can drive a mixed list of them through one
+`process(&mut buffer)` method. You can *see* the gain flatten the waveform's swing, then the
+demo measures **static vs. dynamic dispatch** — calling the nodes directly vs. through a
+runtime `Vec<Box<dyn Node>>`. The result: within measurement noise, so the runtime-built
+graph a real DAW needs costs nothing meaningful.
+
 ## Layout
 
 ```
-src/lib.rs            AtomicF32 (the membrane primitive), SineOsc (a source node), sparkline
-src/bin/membrane.rs   Demo (A)
+src/lib.rs            AtomicF32 (membrane), Node trait, SineOsc (source), Gain (transform), sparkline
+src/bin/membrane.rs   Demo (A) — the membrane
+src/bin/chain.rs      Experiment 1 — osc → gain + dispatch measurement
 ```
