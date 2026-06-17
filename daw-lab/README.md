@@ -72,6 +72,20 @@ surprise: per-voice buffers are ~45% *faster* (the sum vectorizes; the accumulat
 so "always accumulate" is backwards at this scale — the bus's real advantage is memory and
 routing, not speed. A worked example of measuring before committing.
 
+### `rig` — the worst-case measurement rig (Experiment 3)
+
+```sh
+cargo run --release --bin rig
+```
+
+Stops trusting the average. It times every block individually and reports the **tail**
+(p99 / p99.9 / max) and **dropouts** (deadline misses), because a DAW is defined by its worst
+block, not its mean. Three parts: the honest distribution of a clean graph (even clean code has
+an OS-scheduler tail); the **choke** (scale voices until one core's average block blows the
+budget — happens in the low thousands); and the clincher — inject **one forbidden allocation**
+on 0.1% of blocks and watch the mean move ~1% while the worst block balloons ~18×. That's why
+the audio thread may never allocate, lock, or do I/O.
+
 ## Layout
 
 ```
@@ -79,4 +93,5 @@ src/lib.rs            AtomicF32 (membrane), Node trait, SineOsc (source), Gain (
 src/bin/membrane.rs   Demo (A) — the membrane
 src/bin/chain.rs      Experiment 1 — osc → gain + dispatch measurement
 src/bin/mix.rs        Experiment 2 — voices → mixer → gain + buffer-layout measurement
+src/bin/rig.rs        Experiment 3 — worst-case rig: tail latency, the choke, why no alloc
 ```
