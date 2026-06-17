@@ -28,6 +28,12 @@ path = "src/bin/chain.rs"
 name = "mix"
 path = "src/bin/mix.rs"
 
+# Experiment 3: the worst-case rig — time every block, report the tail (p99/p99.9/
+# max) and dropouts, and show why one forbidden op on the audio thread is fatal.
+[[bin]]
+name = "rig"
+path = "src/bin/rig.rs"
+
 # Release profile is what matters for any timing claim. Debug builds are 10-50x slower
 # and would lie to us about the real-time budget, so always measure with --release.
 [profile.release]

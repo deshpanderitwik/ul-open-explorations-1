@@ -1,0 +1,347 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Why the average lies · daw-lab</title>
+<style>
+  :root{
+    --bg:#0f1216; --panel:#161b22; --panel2:#1b212a; --ink:#e7edf3; --muted:#9aa7b4;
+    --line:#252c36; --amber:#f0a85c; --teal:#5fd1c4; --violet:#a78bfa; --pink:#f08ca8;
+    --green:#8fd98f; --red:#f0846c;
+    --radius:16px; --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
+  body{margin:0;background:radial-gradient(1200px 600px at 70% -10%,#18202b 0,var(--bg) 55%);
+    color:var(--ink);font-family:var(--sans);line-height:1.65;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:820px;margin:0 auto;padding:40px 20px 96px}
+  a{color:var(--teal)}
+  .back{font-family:var(--mono);font-size:13px;color:var(--muted);text-decoration:none}
+  .back:hover{color:var(--amber)}
+  .kicker{font-family:var(--mono);font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:var(--amber);margin:26px 0 8px}
+  h1{font-size:clamp(30px,7vw,50px);line-height:1.05;margin:0 0 14px;letter-spacing:-.025em}
+  h2{font-size:clamp(22px,5vw,30px);margin:8px 0 6px;letter-spacing:-.02em}
+  p{color:#cdd6df;max-width:64ch}
+  p.lede{color:var(--muted);font-size:clamp(17px,4.4vw,20px);max-width:60ch}
+  .muted{color:var(--muted)}
+  i{color:#dbe3ea}
+  section{margin-top:54px}
+  hr{border:none;border-top:1px solid var(--line);margin:54px 0}
+
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:22px;margin:22px 0}
+  canvas{display:block;width:100%;border-radius:12px;background:#0b0e12;border:1px solid var(--line)}
+  .cap{font-family:var(--mono);font-size:12px;color:var(--muted);margin-top:10px;text-align:center}
+
+  /* controls */
+  .controls{display:flex;flex-wrap:wrap;gap:10px;margin:14px 0 4px;align-items:center}
+  .btn{font-family:var(--mono);font-size:13px;color:var(--ink);background:var(--panel2);border:1px solid var(--line);border-radius:999px;padding:9px 15px;cursor:pointer}
+  .btn:active{transform:translateY(1px)}
+  .btn.on{border-color:var(--amber);background:#221a10;color:var(--amber)}
+  .btn.danger.on{border-color:var(--red);background:#241413;color:var(--red)}
+  .readout{font-family:var(--mono);font-size:13px;color:var(--muted);margin-left:auto}
+  .readout b{color:var(--teal)} .readout b.bad{color:var(--red)}
+
+  /* result callout */
+  .result{display:flex;gap:14px;align-items:flex-start;background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--amber);border-radius:12px;padding:16px 18px;margin:18px 0}
+  .result .big{font-family:var(--mono);font-size:26px;font-weight:700;color:var(--amber);line-height:1;white-space:nowrap}
+  .result p{margin:0;font-size:14px}
+  .result h3{margin:0 0 4px;font-size:15px}
+
+  /* choke gauge */
+  .gauge{margin:18px 0;position:relative}
+  .grow{display:flex;align-items:center;gap:12px;margin:9px 0;font-family:var(--mono);font-size:12.5px}
+  .grow .lbl{flex:0 0 84px;color:var(--muted);text-align:right}
+  .grow .track{flex:1;background:#0b0e12;border:1px solid var(--line);border-radius:7px;height:26px;position:relative;overflow:hidden}
+  .grow .fill{height:100%;border-radius:6px 0 0 6px;display:flex;align-items:center;justify-content:flex-end;padding-right:8px;font-weight:700;color:#0b0e12;white-space:nowrap}
+  .grow .fill.ok{background:linear-gradient(90deg,#5fd1c4,#8fd98f)}
+  .grow .fill.warn{background:linear-gradient(90deg,#5fd1c4,#f0a85c)}
+  .grow .fill.over{background:linear-gradient(90deg,#f0a85c,#f0846c)}
+  .deadline{position:absolute;top:0;bottom:0;left:62.5%;border-left:2px dashed var(--amber);pointer-events:none}
+  .deadline span{position:absolute;top:-20px;left:6px;font-family:var(--mono);font-size:11px;color:var(--amber);white-space:nowrap}
+
+  footer{margin-top:64px;color:var(--muted);font-size:13px;font-family:var(--mono);border-top:1px solid var(--line);padding-top:20px}
+  .legend{font-family:var(--mono);font-size:12px;color:var(--muted);display:flex;gap:16px;flex-wrap:wrap;margin-top:10px}
+  .legend i{font-style:normal;display:inline-flex;align-items:center;gap:6px}
+  .sw{width:12px;height:12px;border-radius:3px;display:inline-block}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="back" href="../index.html">← all sketches</a>
+  <p class="kicker">DAW engine · experiment 3</p>
+  <h1>Why the average lies</h1>
+  <p class="lede">A cook who's fast on average but freezes once an hour still ruins the
+    recording — that freeze is an audible click. So we stopped trusting averages and built a
+    stopwatch that watches the <i>worst</i> spoonful. Here's what it caught.</p>
+
+  <!-- ============ THE IDEA ============ -->
+  <section>
+    <h2>The one idea</h2>
+    <p>Remember the deal: our cook must plate one spoonful of sound every <b>5.3 milliseconds</b>,
+      forever. Be late even once and the speaker runs dry — a pop, a click, a glitch in the
+      recording. So the question that actually matters isn't <i>"how fast is the cook on
+      average?"</i> It's <i>"how bad is his slowest spoonful, ever?"</i></p>
+    <p>An average smooths all of that away. If 999 spoonfuls are quick and one takes forever, the
+      average still looks great — and the average is exactly what would've let that one disaster
+      slip through. So the new rig times <b>every single spoonful</b> and lines them up worst-first.</p>
+  </section>
+
+  <hr/>
+
+  <!-- ============ PART 1: THE TAIL ============ -->
+  <section>
+    <h2>1 · Even a perfect cook has a bad day</h2>
+    <p>First we watched a flawless kitchen — sixteen singers, no mistakes — for fifty thousand
+      spoonfuls. Here's how long each one took. Almost all cluster around <b>29 µs</b> (a
+      rounding error against the 5,333 µs budget). But look at the <span style="color:var(--red)">far
+      right</span>: the slowest was <b>164 µs</b> — about <b>5–6×</b> the typical one.</p>
+
+    <div class="panel">
+      <canvas id="hist" height="190" aria-label="distribution of block times"></canvas>
+      <div class="cap">50,000 spoonfuls · each bar = how many landed in that time bucket</div>
+    </div>
+
+    <p>We did <i>nothing wrong</i> — that long tail is the rest of the computer (the operating
+      system briefly borrowing the cook for something else). The point: a single average would
+      have reported "29 µs, all good" and hidden the existence of the slow ones entirely. You
+      can't fix — or even fear — a worst case you never measured.</p>
+  </section>
+
+  <hr/>
+
+  <!-- ============ PART 2: THE CHOKE ============ -->
+  <section>
+    <h2>2 · How many singers can one cook handle?</h2>
+    <p>Next we kept adding singers and watched the cook's <i>average</i> spoonful swell toward the
+      5.3 ms wall. There's enormous room — right up until there isn't.</p>
+
+    <div class="gauge panel">
+      <div class="grow"><span class="lbl">64</span><div class="track"><div class="fill ok" style="width:1.4%"></div></div></div>
+      <div class="grow"><span class="lbl">256</span><div class="track"><div class="fill ok" style="width:5.9%">9%</div></div></div>
+      <div class="grow"><span class="lbl">1024</span><div class="track"><div class="fill warn" style="width:24%">39%</div></div></div>
+      <div class="grow"><span class="lbl">4096</span><div class="track"><div class="fill over" style="width:94%">151% — OVER</div></div></div>
+      <div class="deadline" style="left:62.5%"><span>5.3 ms deadline →</span></div>
+    </div>
+    <p class="cap" style="text-align:left">bar = average spoonful as a share of the deadline · dashed line = the deadline itself</p>
+
+    <p>Somewhere in the <b>low thousands of voices</b>, one cook tips over the wall — and once the
+      <i>average</i> is over, <i>every</i> spoonful is late. This ceiling is exactly what the
+      later chapters fix: hire more cooks (run on several processor cores at once) and give them
+      faster knives (chop eight numbers per stroke). For now, it's just good to know where the
+      cliff is.</p>
+  </section>
+
+  <hr/>
+
+  <!-- ============ PART 3: THE VILLAIN ============ -->
+  <section>
+    <h2>3 · The one forbidden errand</h2>
+    <p>Now the real lesson. We sent the cook on <b>one quick errand</b> — fetch a fresh mixing
+      bowl from the basement (in computer terms: ask the system for new memory) — on a tiny
+      <b>0.1%</b> of spoonfuls. Harmless-looking. Watch what it does.</p>
+
+    <div class="panel">
+      <canvas id="monitor" height="220" aria-label="live latency monitor"></canvas>
+      <div class="controls">
+        <button class="btn danger" id="errandBtn">errand: off</button>
+        <button class="btn" id="deadlineBtn">deadline: relaxed (5.3 ms)</button>
+        <span class="readout">worst <b id="worst">—</b> · clicks <b id="clicks">0</b></span>
+      </div>
+      <div class="legend">
+        <i><span class="sw" style="background:var(--teal)"></span>a spoonful (on time)</i>
+        <i><span class="sw" style="background:var(--red)"></span>late — a click</i>
+        <i><span class="sw" style="background:var(--amber)"></span>the deadline</i>
+      </div>
+      <div class="cap">live, sped up so the errand is visible · height is a stretched (log) scale</div>
+    </div>
+
+    <p><b>Try it:</b> flip <i>errand</i> on and the occasional skyscraper appears. Now here's the
+      trap — at a <b>relaxed</b> deadline (a comfy buffer), even those skyscrapers stay under the
+      line: <b>zero clicks</b>. Everything looks fine. Then switch the deadline to <b>tight</b>
+      (the setting a musician uses to play live, where the system must respond almost instantly) —
+      and those same spikes punch right through. The clicks counter starts climbing.</p>
+
+    <div class="result">
+      <div class="big">+1% · 18×</div>
+      <div>
+        <h3>What the stopwatch actually measured</h3>
+        <p>The errand moved the <b>average</b> spoonful by about <b>+1%</b> — utterly invisible.
+          But it blew the <b>worst</b> spoonful up by <b>~18×</b> (from 164 µs to ~2,950 µs). At a
+          comfy buffer: 0 dropouts. At a low-latency buffer: real, audible clicks.</p>
+      </div>
+    </div>
+  </section>
+
+  <hr/>
+
+  <!-- ============ THE RULE ============ -->
+  <section>
+    <h2>Why this is the whole ballgame</h2>
+    <p>That tiny errand is invisible to the average <i>and</i> survives a relaxed deadline — so it
+      sails through casual testing. Then a user drops to low latency to play live, and it becomes
+      a click they can't explain. <b>This is why the audio thread is forbidden from ever fetching
+      memory, waiting on a lock, or touching the disk:</b> one rare unbounded errand is harmless
+      on paper and fatal in the tail.</p>
+    <p>It's also why this whole project optimizes for <i>"never late"</i> rather than <i>"fast on
+      average."</i> The rig you just played with is now our permanent stopwatch — every future
+      change gets weighed by its worst spoonful, not its typical one.</p>
+    <p class="muted">Next: hire more cooks. Split the kitchen across several processor cores so the
+      choke ceiling rises — without ever breaking the never-late rule.</p>
+  </section>
+
+  <footer>daw-lab · <a href="engine-so-far/index.html" style="color:var(--muted)">← the engine so far</a> · runnable demo: <code>cargo run --release --bin rig</code></footer>
+</div>
+
+<script>
+(function(){
+  function fit(canvas, cssHeight){
+    const dpr = Math.max(1, Math.min(3, window.devicePixelRatio || 1));
+    const w = canvas.clientWidth;
+    canvas.width = Math.round(w * dpr);
+    canvas.height = Math.round(cssHeight * dpr);
+    const ctx = canvas.getContext('2d');
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    return {ctx, w, h: cssHeight};
+  }
+
+  // ---------- Part 1: histogram of block times ----------
+  const hist = document.getElementById('hist');
+  const BUCKETS = 44, BMAX = 180; // µs
+  const counts = [];
+  for(let b=0;b<BUCKETS;b++){
+    const c = (b + 0.5) * BMAX / BUCKETS;             // bucket center in µs
+    const peak = Math.exp(-((c-28)*(c-28))/(2*7*7)) * 1000;   // the cluster ~28µs
+    const tail = c > 38 ? 16 * Math.exp(-(c-38)/55) : 0;       // the long thin tail
+    counts.push(peak + tail);
+  }
+  const cmax = Math.max(...counts);
+
+  function drawHist(){
+    const {ctx,w,h} = fit(hist,190);
+    ctx.clearRect(0,0,w,h);
+    const padB = 26, gap = 2;
+    const bw = (w - gap*(BUCKETS-1)) / BUCKETS;
+    for(let b=0;b<BUCKETS;b++){
+      const bh = (counts[b]/cmax) * (h - padB - 8);
+      const x = b*(bw+gap);
+      const c = (b+0.5)*BMAX/BUCKETS;
+      ctx.fillStyle = c > 60 ? 'rgba(240,132,108,0.85)' : 'rgba(95,209,196,0.85)';
+      ctx.fillRect(x, h-padB-bh, bw, bh);
+    }
+    // mean marker (~29µs)
+    const meanX = (29/BMAX)*w;
+    ctx.strokeStyle = '#e7edf3'; ctx.setLineDash([3,3]); ctx.lineWidth=1;
+    ctx.beginPath(); ctx.moveTo(meanX,8); ctx.lineTo(meanX,h-padB); ctx.stroke(); ctx.setLineDash([]);
+    ctx.fillStyle = '#e7edf3'; ctx.font = '11px ui-monospace, monospace'; ctx.fillText('mean 29 µs', meanX+5, 18);
+    // max marker (~164µs)
+    const maxX = (164/BMAX)*w;
+    ctx.strokeStyle = '#f0846c';
+    ctx.beginPath(); ctx.moveTo(maxX,8); ctx.lineTo(maxX,h-padB); ctx.stroke();
+    ctx.fillStyle = '#f0846c'; ctx.textAlign='right';
+    ctx.fillText('worst 164 µs ↑', maxX-5, 18); ctx.textAlign='left';
+    // axis ticks
+    ctx.fillStyle = '#6b7785';
+    [0,40,80,120,160].forEach(t=>{ const x=(t/BMAX)*w; ctx.fillText(t+'µs', x, h-8); });
+  }
+
+  // ---------- Part 3: live latency monitor ----------
+  const mon = document.getElementById('monitor');
+  const errandBtn = document.getElementById('errandBtn');
+  const deadlineBtn = document.getElementById('deadlineBtn');
+  const worstEl = document.getElementById('worst');
+  const clicksEl = document.getElementById('clicks');
+
+  let errand = false, tight = false, clicks = 0, worst = 0, frame = 0, sinceSpike = 0;
+  const N = 90;                 // bars shown
+  const times = new Array(N).fill(28);
+  const flash = new Array(N).fill(false);
+  const COMFY = 5333, TIGHT = 667;   // µs deadlines
+
+  errandBtn.addEventListener('click', ()=>{
+    errand = !errand;
+    errandBtn.textContent = 'errand: ' + (errand?'ON':'off');
+    errandBtn.classList.toggle('on', errand);
+    clicks = 0; worst = 0;
+  });
+  deadlineBtn.addEventListener('click', ()=>{
+    tight = !tight;
+    deadlineBtn.textContent = 'deadline: ' + (tight?'tight (0.67 ms)':'relaxed (5.3 ms)');
+    deadlineBtn.classList.toggle('on', tight);
+    clicks = 0;
+  });
+
+  function nextTime(){
+    // a normal spoonful: ~26-40µs with a little jitter
+    let t = 26 + Math.random()*8 + (Math.random()<0.04 ? 60*Math.random() : 0);
+    if(errand){
+      sinceSpike++;
+      // a "skyscraper" every ~12 spoonfuls (sped up from the real 0.1% so it's watchable)
+      if(sinceSpike > 8 + Math.random()*8){
+        sinceSpike = 0;
+        const r = Math.random();
+        t = r<0.7 ? 120+Math.random()*80      // warm fetch
+          : r<0.9 ? 300+Math.random()*600     // colder
+          :         1500+Math.random()*1450;  // worst case, up to ~2950
+      }
+    }
+    return t;
+  }
+
+  const lo = Math.log10(10), hi = Math.log10(6000);   // log scale 10µs..6000µs
+  function yOf(t, h, padB){
+    const v = (Math.log10(Math.max(10,t)) - lo)/(hi-lo);
+    return (h-padB) - v*(h-padB-6);
+  }
+
+  function drawMonitor(){
+    const {ctx,w,h} = fit(mon,220);
+    const padB = 22;
+    ctx.clearRect(0,0,w,h);
+    const deadline = tight ? TIGHT : COMFY;
+
+    // deadline line
+    const dy = yOf(deadline, h, padB);
+    ctx.strokeStyle = '#f0a85c'; ctx.setLineDash([5,4]); ctx.lineWidth=1.5;
+    ctx.beginPath(); ctx.moveTo(0,dy); ctx.lineTo(w,dy); ctx.stroke(); ctx.setLineDash([]);
+    ctx.fillStyle = '#f0a85c'; ctx.font='11px ui-monospace, monospace';
+    ctx.fillText((tight?'0.67':'5.3')+' ms deadline', 6, dy-5);
+    // faint other deadline for reference
+    const oy = yOf(tight?COMFY:TIGHT, h, padB);
+    ctx.strokeStyle = 'rgba(154,167,180,0.25)'; ctx.setLineDash([2,5]);
+    ctx.beginPath(); ctx.moveTo(0,oy); ctx.lineTo(w,oy); ctx.stroke(); ctx.setLineDash([]);
+
+    // bars
+    const bw = w/N;
+    for(let i=0;i<N;i++){
+      const t = times[i];
+      const y = yOf(t,h,padB);
+      const over = t > deadline;
+      ctx.fillStyle = over ? '#f0846c' : 'rgba(95,209,196,0.8)';
+      ctx.fillRect(i*bw+0.5, y, bw-1.2, (h-padB)-y);
+      if(over && flash[i]){ ctx.fillStyle='rgba(240,132,108,0.25)'; ctx.fillRect(i*bw, 0, bw, h-padB); }
+    }
+  }
+
+  function tick(){
+    if(frame % 5 === 0){      // advance one spoonful every 5 frames (~12/sec)
+      times.shift(); flash.shift();
+      const t = nextTime();
+      times.push(t); flash.push(true);
+      const deadline = tight ? TIGHT : COMFY;
+      if(t > deadline){ clicks++; }
+      if(t > worst) worst = t;
+      worstEl.textContent = Math.round(worst) + ' µs';
+      clicksEl.textContent = clicks;
+      clicksEl.className = clicks>0 ? 'bad' : '';
+    }
+    frame++;
+  }
+
+  function loop(){ drawHist(); drawMonitor(); tick(); requestAnimationFrame(loop); }
+  loop();
+})();
+</script>
+</body>
+</html>

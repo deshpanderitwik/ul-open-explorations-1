@@ -81,8 +81,15 @@ so the graph can hold a list of *different* nodes and run them uniformly.
 5. **Time.** A `Transport`/clock (sample position, tempo) and a sequencer node
    that decides note on/off per block and drives the osc's freq/gate. First
    thing that sounds like *music* instead of a tone.
-6. **The choke** (README's step 3). Scale node count until per-block fill blows
-   the 5.3 ms budget. Measure *where* it breaks. This is the motivation for...
+6. **The choke** (README's step 3). ✅ *measured by the rig* — one core saturates
+   in the low thousands of voices (1024 ≈ 39% of budget; 4096 ≈ 151%, over). This
+   is the motivation for...
+
+> **The worst-case rig** (`bin/rig`) is the measurement backbone for everything
+> above. ✅ It times every block and reports the *tail* (p99/p99.9/max) and
+> dropouts, not the mean — because a DAW is defined by its worst block. It also
+> proved the render-thread rules with a number: one 4 MB allocation on 0.1% of
+> blocks moved the mean +1% but blew the worst block 18×. Average lies; tail tells.
 7. **Threading the graph** (README's step 4). Split the graph into parallel
    branches across cores without breaking the real-time rules.
 8. **Real I/O.** Swap the sparkline sink for `cpal` (actual speaker) and the
