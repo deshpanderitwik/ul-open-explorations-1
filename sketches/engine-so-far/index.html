@@ -238,6 +238,40 @@
     <p class="muted">16 voices, per block. The bowl's real edge turned out to be <i>memory</i>
       (1 buffer vs. N) and routing — not speed. Exactly the kind of folklore the stopwatch is
       here to overrule.</p>
+
+    <p class="kicker" style="margin-top:36px">the full story</p>
+    <p>Combining voices forces a question we'd been able to dodge until now: while the voices
+      are being summed, <i>where does each one's sound physically sit?</i> We built it two ways —
+      and first checked they produce bit-for-bit identical sound, so we'd be timing pure speed
+      and nothing else.</p>
+    <p><b>A cup per voice.</b> Each tone-maker renders into its own little buffer, and the mixer
+      empties all the cups into the serving bowl at the end. Flexible — you can still inspect any
+      single voice on its own (handy later for meters, sends, sidechains) — but it needs a whole
+      shelf of cups.</p>
+    <p><b>One shared bowl.</b> No cups at all. Each voice pours its sound straight into the one
+      serving bowl, on top of whatever's already there. One buffer, far less to manage — but the
+      individual voices vanish the instant they're poured.</p>
+    <p>Going in, the shared bowl looked like the obvious winner. It uses a fraction of the
+      memory, and the cook keeps working in one warm spot instead of trotting along a shelf —
+      exactly the locality chips usually reward. With 64 voices the shelf gets long, so surely one
+      bowl wins. That's the textbook answer, too: <i>real mixers accumulate.</i></p>
+    <p>The stopwatch disagreed. Across 1, 4, 16, and 64 voices — thousands of spoonfuls each —
+      the shared bowl was about <b>45% slower every single time</b>. And here's the detective
+      work: the gap stayed the <i>same size</i> as voices climbed. That flatness is the tell. If
+      the warm-spot, long-shelf theory were right, the bowl's advantage should have <i>grown</i>
+      as the shelf got longer. A flat gap means the cause is something else entirely.</p>
+    <p>The real culprit is <i>how the chopping gets done.</i> Modern chips can add long rows of
+      numbers eight-at-a-time — but only when that adding stands alone as its own plain,
+      repetitive task. The cup method hands the chip exactly that: render into cups (one job),
+      then a separate, beautifully boring "sum all the cups" pass it blitzes through eight-at-once.
+      The shared bowl <i>braids</i> the pouring into the middle of the tone-making — and computing
+      a sine is twisty work the chip must grind out one step at a time. Braided together, the fast
+      part gets dragged down to the slow part's pace.</p>
+    <p>So the "obvious optimization" was backwards at this scale. The shared bowl's genuine
+      advantages are <i>space</i> (one buffer instead of N) and simpler routing — not speed. We
+      keep the cups for now. The real win is that we caught it with twenty lines of code instead
+      of twenty thousand: this was the first time the stopwatch overruled the folklore, and the
+      whole project is a bet that it won't be the last.</p>
   </section>
 
   <hr/>
