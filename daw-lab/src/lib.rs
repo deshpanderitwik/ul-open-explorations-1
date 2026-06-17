@@ -53,6 +53,21 @@ impl AtomicF32 {
     }
 }
 
+/// The uniform contract every station on the assembly line implements.
+///
+/// A node does exactly one thing: take one block and leave it in a new state. A
+/// *source* (like `SineOsc`) ignores the incoming contents and writes fresh
+/// samples; a *transform* (like `Gain`) reads what's there and rewrites it in
+/// place. Either way the signature is identical — and that sameness is the whole
+/// point: a graph can hold a mixed list of nodes and drive them all through this
+/// one method without knowing what each one is.
+///
+/// `process` must obey the render-thread rules: no allocation, no locks, no I/O.
+/// It works only on the buffer the caller already owns.
+pub trait Node {
+    fn process(&mut self, buffer: &mut [f32]);
+}
+
 /// A minimal source node: a sine-wave oscillator.
 ///
 /// It owns only what it must remember *between* blocks: where it is in the wave (`phase`)
@@ -65,6 +80,11 @@ pub struct SineOsc {
     /// blocks so the waveform is continuous — if we reset it every block we'd get a click.
     phase: f32,
     sample_rate: f32,
+    /// The frequency used by the `Node` interface. The low-level `fill` still takes
+    /// `freq` explicitly (that's the membrane demo's path); this field is what a graph
+    /// sets via `set_freq` when it drives the node through `process`, which has no room
+    /// for arguments. A later rung wires this to an `AtomicF32` membrane.
+    freq: f32,
 }
 
 impl SineOsc {
@@ -72,7 +92,13 @@ impl SineOsc {
         SineOsc {
             phase: 0.0,
             sample_rate,
+            freq: 220.0,
         }
+    }
+
+    /// Set the frequency used by the `Node` interface (`process`).
+    pub fn set_freq(&mut self, freq: f32) {
+        self.freq = freq;
     }
 
     /// Fill `buffer` with one block of a sine wave at `freq` Hz.
@@ -94,6 +120,58 @@ impl SineOsc {
             if self.phase >= 1.0 {
                 self.phase -= 1.0;
             }
+        }
+    }
+
+    /// Like `fill`, but *adds* `gain * sin` into the buffer instead of overwriting it.
+    ///
+    /// This is what an accumulating mixer uses: every voice adds its contribution
+    /// directly into one shared "bus" buffer that stays hot in cache, instead of each
+    /// voice owning a separate buffer the mixer must then stream back in to sum. Same
+    /// real-time guarantees as `fill` — no allocation, no locks, bounded cost.
+    pub fn fill_add(&mut self, buffer: &mut [f32], freq: f32, gain: f32) {
+        let phase_inc = freq / self.sample_rate;
+        for sample in buffer.iter_mut() {
+            *sample += gain * (self.phase * TAU).sin();
+            self.phase += phase_inc;
+            if self.phase >= 1.0 {
+                self.phase -= 1.0;
+            }
+        }
+    }
+}
+
+impl Node for SineOsc {
+    /// As a node, the oscillator is a *source*: it ignores whatever is in the buffer
+    /// and writes a fresh block at its current frequency. We just reuse `fill`.
+    fn process(&mut self, buffer: &mut [f32]) {
+        let freq = self.freq;
+        self.fill(buffer, freq);
+    }
+}
+
+/// A transform node: multiply every sample by a constant gain.
+///
+/// The simplest possible "second station." Unlike the oscillator it does not invent
+/// signal — it *reads* the block the previous node produced and rewrites it in place.
+/// Gain 1.0 is a pass-through; below 1.0 the waveform gets quieter (the sparkline
+/// flattens toward the middle); above 1.0 it gets louder (and will clip at ±1.0).
+pub struct Gain {
+    pub gain: f32,
+}
+
+impl Gain {
+    pub fn new(gain: f32) -> Self {
+        Gain { gain }
+    }
+}
+
+impl Node for Gain {
+    /// Real-time-safe by construction: one multiply per sample, no allocation, no
+    /// branches in the inner loop. Worst-case cost is simply `buffer.len()` multiplies.
+    fn process(&mut self, buffer: &mut [f32]) {
+        for sample in buffer.iter_mut() {
+            *sample *= self.gain;
         }
     }
 }

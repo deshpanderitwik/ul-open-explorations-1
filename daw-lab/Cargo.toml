@@ -16,6 +16,18 @@ path = "src/lib.rs"
 name = "membrane"
 path = "src/bin/membrane.rs"
 
+# Experiment 1: the first edge — osc -> gain — plus a static-vs-dynamic dispatch
+# measurement. Introduces the Node trait that every later rung reuses.
+[[bin]]
+name = "chain"
+path = "src/bin/chain.rs"
+
+# Experiment 2: the first graph — many voices into a mixer — and the buffer-layout
+# bet (per-voice buffers vs. one accumulator bus), measured as voice count scales.
+[[bin]]
+name = "mix"
+path = "src/bin/mix.rs"
+
 # Release profile is what matters for any timing claim. Debug builds are 10-50x slower
 # and would lie to us about the real-time budget, so always measure with --release.
 [profile.release]
