@@ -90,6 +90,10 @@
       quick and one takes far too long, the average still looks fine while that one late buffer is
       an audible glitch. So the rig times <b>every single block</b> and lines them up
       worst-first.</p>
+    <p>That single shift — <b>judge the worst block, not the average</b> — <i>is</i> the
+      experiment. Everything below is the rig put to work: first as a plain yardstick (how many
+      voices fit on one core?), and then for the part that actually matters — showing how one rare
+      mistake stays invisible to the average while wrecking the worst case.</p>
   </section>
 
   <hr/>
@@ -120,8 +124,9 @@
   <!-- ============ PART 2: THE CHOKE ============ -->
   <section>
     <h2>2 · How much can one core take?</h2>
-    <p>Next we kept adding <b>voices</b> (oscillators) and watched the <i>average</i> render time
-      per block climb toward the 5.3 ms wall. There's enormous headroom — right up until there
+    <p class="muted" style="font-family:var(--mono);font-size:13px">the rig's simplest use — finding a ceiling. (the real lesson is Part 3.)</p>
+    <p>We kept adding <b>voices</b> (oscillators) and watched the <i>average</i> render time per
+      block climb toward the 5.3 ms wall. There's enormous headroom — right up until there
       isn't.</p>
 
     <div class="gauge panel">
@@ -197,6 +202,9 @@
       than the <i>average</i> ("fast on average"). The rig you just played with is now the
       permanent measuring stick — every future change is judged by its worst block, not its
       typical one.</p>
+    <p><b>In one sentence:</b> this experiment built a stopwatch that judges the <i>worst</i>
+      block instead of the average — then used it to find the single-core ceiling (Part 2) and,
+      more importantly, to prove why one rare forbidden operation is fatal (Part 3).</p>
     <p class="muted">Next: raise the ceiling from Part 2 by spreading the signal graph across
       several CPU cores at once — without ever breaking the never-late rule.</p>
   </section>
