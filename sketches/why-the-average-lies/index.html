@@ -197,7 +197,8 @@
       sails through casual testing. Then a user drops to low latency to play live and it becomes a
       click they can't explain. <b>This is why the real-time audio thread may never allocate
       memory, wait on a lock, or touch the disk:</b> any operation without a bounded worst case is
-      harmless on paper and fatal in the tail.</p>
+      harmless on paper and fatal in the tail. <a href="../guarding-the-audio-thread/index.html">So
+      how do we make sure it never happens? →</a>
     <p>It's also why the whole project optimizes for the <i>worst case</i> ("never late") rather
       than the <i>average</i> ("fast on average"). The rig you just played with is now the
       permanent measuring stick — every future change is judged by its worst block, not its

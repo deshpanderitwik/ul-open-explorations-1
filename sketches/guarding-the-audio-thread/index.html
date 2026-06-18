@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Guarding the audio thread · daw-lab</title>
+<style>
+  :root{
+    --bg:#0f1216; --panel:#161b22; --panel2:#1b212a; --ink:#e7edf3; --muted:#9aa7b4;
+    --line:#252c36; --amber:#f0a85c; --teal:#5fd1c4; --violet:#a78bfa; --pink:#f08ca8;
+    --green:#8fd98f; --red:#f0846c;
+    --radius:16px; --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
+  body{margin:0;background:radial-gradient(1200px 600px at 70% -10%,#18202b 0,var(--bg) 55%);
+    color:var(--ink);font-family:var(--sans);line-height:1.65;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:820px;margin:0 auto;padding:40px 20px 96px}
+  a{color:var(--teal)}
+  .back{font-family:var(--mono);font-size:13px;color:var(--muted);text-decoration:none}
+  .back:hover{color:var(--amber)}
+  .kicker{font-family:var(--mono);font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:var(--amber);margin:26px 0 8px}
+  h1{font-size:clamp(30px,7vw,50px);line-height:1.05;margin:0 0 14px;letter-spacing:-.025em}
+  h2{font-size:clamp(21px,4.6vw,28px);margin:8px 0 6px;letter-spacing:-.02em}
+  h2 .n{font-family:var(--mono);font-size:16px;color:var(--amber);margin-right:8px}
+  p{color:#cdd6df;max-width:64ch}
+  p.lede{color:var(--muted);font-size:clamp(17px,4.4vw,20px);max-width:62ch}
+  .muted{color:var(--muted)}
+  i{color:#dbe3ea}
+  code{font-family:var(--mono);background:#0b0e12;border:1px solid var(--line);border-radius:5px;padding:1px 6px;font-size:.9em;color:#d6dee7}
+  section{margin-top:50px}
+  hr{border:none;border-top:1px solid var(--line);margin:50px 0}
+
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:20px 22px;margin:22px 0}
+  .rules{list-style:none;margin:6px 0 0;padding:0;font-family:var(--mono);font-size:13.5px;line-height:1.9}
+  .rules li{color:#cdd6df}
+  .x{color:var(--red);font-weight:700}
+  .ok{color:var(--green);font-weight:700}
+
+  .chip{display:inline-block;font-family:var(--mono);font-size:11px;letter-spacing:.07em;padding:3px 10px;border-radius:999px;margin:14px 0 -2px}
+  .chip.no{color:var(--red);border:1px solid rgba(240,132,108,0.45);background:#241413}
+  .chip.yes{color:var(--green);border:1px solid rgba(143,217,143,0.45);background:#13201a}
+
+  pre{background:#0b0e12;border:1px solid var(--line);border-radius:12px;padding:16px 16px 16px 18px;
+    overflow-x:auto;font-family:var(--mono);font-size:13px;line-height:1.7;margin:8px 0 14px;color:#d6dee7;white-space:pre}
+  pre.bad{border-left:3px solid var(--red)}
+  pre.good{border-left:3px solid var(--green)}
+  .c{color:#6b7785;font-style:italic}
+  .k{color:var(--violet)} .t{color:var(--teal)} .s{color:var(--green)} .nm{color:var(--amber)}
+
+  footer{margin-top:64px;color:var(--muted);font-size:13px;font-family:var(--mono);border-top:1px solid var(--line);padding-top:20px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="back" href="../index.html">← all sketches</a>
+  <p class="kicker">DAW engine · real-time discipline</p>
+  <h1>Guarding the audio thread</h1>
+  <p class="lede">The <a href="../why-the-average-lies/index.html">worst-case rig</a> proved that
+    one stray operation — a single memory allocation — is invisible in the average and fatal in the
+    tail. So how do we make sure it never sneaks in? Not willpower. <i>Defense in depth</i>: a few
+    habits, plus an automatic tripwire. Here's the playbook, in annotated Rust.</p>
+
+  <!-- ============ THE RULES ============ -->
+  <section>
+    <h2>The rule, and why</h2>
+    <p>The audio thread runs under a hard 5.3 ms deadline, so every operation it performs must have
+      a <b>bounded, predictable cost</b>. Anything whose worst case is unbounded — could ask the
+      operating system for something, could wait on another thread — is banned. Concretely, a
+      function on the audio thread must contain none of:</p>
+    <div class="panel">
+      <ul class="rules">
+        <li><span class="x">✗</span> allocation — <code>vec!</code>, <code>Box::new</code>, <code>String</code>, <code>format!</code>, <code>.collect()</code></li>
+        <li><span class="x">✗</span> deallocation — dropping any heap value (that's a hidden <code>free()</code>)</li>
+        <li><span class="x">✗</span> blocking — <code>Mutex::lock</code>, <code>RwLock</code>, channels that may wait or allocate</li>
+        <li><span class="x">✗</span> I/O &amp; syscalls — <code>println!</code>, files, sockets, the clock</li>
+        <li><span class="x">✗</span> unbounded work — <code>HashMap</code> growth, sorting unbounded input, unbounded loops</li>
+        <li style="margin-top:8px"><span class="ok">✓</span> allowed: arithmetic, fixed slices, atomics, lock-free queues, preallocated pools</li>
+      </ul>
+    </div>
+    <p>Every technique below is just a way of upholding one of those lines — and the last one is how
+      we <i>enforce</i> them automatically instead of hoping.</p>
+  </section>
+
+  <hr/>
+
+  <!-- ============ 1. PREALLOCATE ============ -->
+  <section>
+    <h2><span class="n">1</span>Allocate once, then only reuse</h2>
+    <p>The single most common mistake: a scratch buffer created inside the render function. It
+      allocates <i>and</i> frees on every block — two unbounded stalls, 188 times a second. The fix
+      is to own that memory in the node and allocate it once, at setup, off the audio thread.</p>
+
+    <div class="chip no">FORBIDDEN — allocates &amp; frees every block</div>
+    <pre class="bad"><span class="k">fn</span> process(&amp;<span class="k">mut</span> self, out: &amp;<span class="k">mut</span> [<span class="t">f32</span>]) {
+    <span class="k">let</span> <span class="k">mut</span> scratch = <span class="nm">vec!</span>[<span class="nm">0.0</span>; out.len()]; <span class="c">// ✗ a fresh heap buffer, every block</span>
+    mix_into(&amp;<span class="k">mut</span> scratch, out);
+} <span class="c">// ← scratch is dropped here too: a free() on the hot path</span></pre>
+
+    <div class="chip yes">REAL-TIME SAFE — borrow memory you already own</div>
+    <pre class="good"><span class="k">struct</span> <span class="t">Reverb</span> { scratch: <span class="t">Vec</span>&lt;<span class="t">f32</span>&gt; }   <span class="c">// allocated once in Reverb::new(block_size)</span>
+
+<span class="k">fn</span> process(&amp;<span class="k">mut</span> self, out: &amp;<span class="k">mut</span> [<span class="t">f32</span>]) {
+    <span class="k">let</span> scratch = &amp;<span class="k">mut</span> self.scratch; <span class="c">// ✓ just a borrow — zero allocation</span>
+    mix_into(scratch, out);
+}</pre>
+    <p>For things that come and go — synth voices, active notes — don't allocate per note. Keep a
+      <b>fixed pool</b> (a <code>Vec</code> with reserved capacity, or a fixed array) and reuse
+      slots. The pool is sized for the worst case up front; the audio thread only ever indexes into
+      it.</p>
+  </section>
+
+  <hr/>
+
+  <!-- ============ 2. MEMBRANE ============ -->
+  <section>
+    <h2><span class="n">2</span>Talk through the membrane, never a lock</h2>
+    <p>The UI thread changes parameters; the audio thread reads them. The tempting tool is a mutex —
+      and it's exactly wrong, because <code>.lock()</code> can make the audio thread <i>wait</i> on
+      the UI thread, blowing the deadline (a "priority inversion"). Instead: one value crosses as an
+      <b>atomic</b>, a stream of events crosses on a <b>lock-free queue</b>.</p>
+
+    <div class="chip no">FORBIDDEN — a lock can stall the audio thread</div>
+    <pre class="bad"><span class="k">let</span> p = self.params.lock().unwrap(); <span class="c">// ✗ .lock() may block on the UI thread</span>
+self.cutoff = p.cutoff;</pre>
+
+    <div class="chip yes">REAL-TIME SAFE — non-blocking by construction</div>
+    <pre class="good"><span class="c">// one value → one atomic: a single, bounded CPU instruction</span>
+<span class="k">let</span> cutoff = self.cutoff.load(<span class="t">Ordering</span>::Relaxed); <span class="c">// ✓ never blocks</span>
+
+<span class="c">// a stream of events → a lock-free SPSC queue (e.g. the `rtrb` crate)</span>
+<span class="k">while</span> <span class="k">let</span> <span class="t">Ok</span>(ev) = self.events.pop() { <span class="c">// ✓ drains what's queued, then returns</span>
+    self.apply(ev);
+}</pre>
+    <p>This is the <a href="../engine-so-far/index.html">membrane</a> from the very first demo,
+      grown up: the audio thread and the rest of the program meet only through primitives that
+      cannot block it.</p>
+  </section>
+
+  <hr/>
+
+  <!-- ============ 3. DON'T FREE ============ -->
+  <section>
+    <h2><span class="n">3</span>Don't even free — ship the trash out</h2>
+    <p>Subtle one: dropping a heap value (a <code>Box</code>, a <code>Vec</code>) calls
+      <code>free()</code>, which is just as unbounded as <code>malloc</code>. So when a voice ends,
+      you can't simply let its buffers drop on the audio thread. You <b>move</b> them onto a queue
+      and let a housekeeping thread — which has no deadline — do the freeing.</p>
+
+    <div class="chip yes">REAL-TIME SAFE — hand-off now, free later</div>
+    <pre class="good"><span class="c">// audio thread: a voice finished — send its heap memory away, don't drop it here</span>
+<span class="k">if</span> voice.done() {
+    <span class="k">let</span> _ = self.trash.push(voice.take_heap()); <span class="c">// ✓ move out, no free() on the hot path</span>
+}
+
+<span class="c">// housekeeping thread (no deadline): the free() happens safely over here</span>
+<span class="k">while</span> <span class="k">let</span> <span class="t">Ok</span>(garbage) = trash.pop() {
+    <span class="k">drop</span>(garbage); <span class="c">// ← free() runs off the audio thread</span>
+}</pre>
+  </section>
+
+  <hr/>
+
+  <!-- ============ 4. DENORMALS ============ -->
+  <section>
+    <h2><span class="n">4</span>Flush denormals to zero</h2>
+    <p>A non-obvious tail-spiker: <b>denormals</b> — vanishingly small floating-point numbers that
+      appear as a sound decays toward silence. On many CPUs the math on them runs <b>10–100×
+      slower</b>, so a fading reverb tail can quietly blow the budget. The fix is one setting,
+      applied once when the audio thread starts.</p>
+
+    <pre><span class="c">// set the CPU's "flush-to-zero" mode once, at audio-thread start:</span>
+<span class="c">//   x86_64 : set FTZ + DAZ in the MXCSR register</span>
+<span class="c">//   aarch64: set the FZ bit in FPCR            (Apple Silicon)</span>
+<span class="c">// in practice: the `no_denormals` crate, or a few lines of core::arch.</span>
+<span class="k">fn</span> on_audio_start() { no_denormals::flush_to_zero(); } <span class="c">// tiny near-zeros now cost nothing</span></pre>
+  </section>
+
+  <hr/>
+
+  <!-- ============ 5. THE TRIPWIRE ============ -->
+  <section>
+    <h2><span class="n">5</span>The tripwire: catch violations automatically</h2>
+    <p>Habits slip. The real answer to "how do we prevent it" is to make a violation <b>fail loudly,
+      on its own</b>. Install a custom global allocator that knows when we're on the audio thread
+      (a thread-local flag) and panics the instant anything allocates there. Now any stray
+      <code>vec!</code> — even one buried inside a dependency — blows up in your tests instead of
+      clicking in a user's recording.</p>
+
+    <div class="chip yes">THE GUARD — a global allocator that trips on audio-thread allocation</div>
+    <pre class="good"><span class="k">use</span> std::alloc::{<span class="t">GlobalAlloc</span>, <span class="t">Layout</span>, <span class="t">System</span>};
+<span class="k">use</span> std::cell::<span class="t">Cell</span>;
+
+<span class="nm">thread_local!</span>(<span class="k">static</span> ON_AUDIO: <span class="t">Cell</span>&lt;<span class="t">bool</span>&gt; = <span class="k">const</span> { <span class="t">Cell</span>::new(<span class="k">false</span>) });
+
+<span class="k">struct</span> <span class="t">Tripwire</span>; <span class="c">// wraps the normal system allocator</span>
+<span class="k">unsafe impl</span> <span class="t">GlobalAlloc</span> <span class="k">for</span> <span class="t">Tripwire</span> {
+    <span class="k">unsafe fn</span> alloc(&amp;self, l: <span class="t">Layout</span>) -&gt; *<span class="k">mut</span> <span class="t">u8</span> {
+        ON_AUDIO.with(|on| <span class="k">if</span> on.get() {
+            <span class="nm">panic!</span>(<span class="s">"allocation on the audio thread!"</span>); <span class="c">// a bug — caught instantly</span>
+        });
+        <span class="t">System</span>.alloc(l)
+    }
+    <span class="k">unsafe fn</span> dealloc(&amp;self, p: *<span class="k">mut</span> <span class="t">u8</span>, l: <span class="t">Layout</span>) { <span class="t">System</span>.dealloc(p, l) }
+}
+
+<span class="nm">#[global_allocator]</span>
+<span class="k">static</span> GLOBAL: <span class="t">Tripwire</span> = <span class="t">Tripwire</span>;</pre>
+
+    <p>Then flip the flag around the render callback:</p>
+    <pre class="good">ON_AUDIO.with(|on| on.set(<span class="k">true</span>));
+render_block(out);  <span class="c">// ✓ any stray alloc OR free in here now panics</span>
+ON_AUDIO.with(|on| on.set(<span class="k">false</span>));</pre>
+
+    <p>This is precisely what the <code>assert_no_alloc</code> crate does, more robustly — you enable
+      it in debug and test builds and ship the release without the check. But a tripwire only catches
+      what it can see. Locks that rarely contend, denormal storms, an occasional syscall — those slip
+      past static guards. That's why the other half of prevention is empirical: run the
+      <a href="../why-the-average-lies/index.html">worst-case rig</a> and watch the <i>tail</i>. The
+      allocator guard catches the obvious; the rig catches the rest.</p>
+  </section>
+
+  <hr/>
+
+  <!-- ============ DEFENSE IN DEPTH ============ -->
+  <section>
+    <h2>Defense in depth</h2>
+    <p>No single trick keeps the audio thread honest; the layers do it together: <b>pre-allocate</b>
+      so there's nothing to allocate, <b>talk lock-free</b> so there's nothing to wait on, <b>ship
+      the trash out</b> so there's nothing to free, <b>flush denormals</b> so the math stays cheap —
+      and then a <b>tripwire allocator</b> plus the <b>worst-case rig</b> to catch whatever still
+      slips through. Habits make it correct; the automatic checks keep it correct.</p>
+    <p class="muted">These are the same disciplines we'll lean on when we split the graph across CPU
+      cores next — every worker thread plays by the exact same rules.</p>
+  </section>
+
+  <footer>daw-lab · <a href="../why-the-average-lies/index.html" style="color:var(--muted)">← why the average lies</a> · real-time-safe primitives live in <code>daw-lab/src/lib.rs</code></footer>
+</div>
+</body>
+</html>
