@@ -72,50 +72,57 @@
   <a class="back" href="../index.html">← all sketches</a>
   <p class="kicker">DAW engine · experiment 3</p>
   <h1>Why the average lies</h1>
-  <p class="lede">A cook who's fast on average but freezes once an hour still ruins the
-    recording — that freeze is an audible click. So we stopped trusting averages and built a
-    stopwatch that watches the <i>worst</i> spoonful. Here's what it caught.</p>
+  <p class="lede">An audio engine that's fast <i>on average</i> but stalls once an hour still
+    ruins the recording — that stall is an audible click. So we stopped trusting averages and
+    built a rig that measures the <i>worst</i> block of audio it ever produces. Here's what it
+    caught.</p>
 
   <!-- ============ THE IDEA ============ -->
   <section>
     <h2>The one idea</h2>
-    <p>Remember the deal: our cook must plate one spoonful of sound every <b>5.3 milliseconds</b>,
-      forever. Be late even once and the speaker runs dry — a pop, a click, a glitch in the
-      recording. So the question that actually matters isn't <i>"how fast is the cook on
-      average?"</i> It's <i>"how bad is his slowest spoonful, ever?"</i></p>
-    <p>An average smooths all of that away. If 999 spoonfuls are quick and one takes forever, the
-      average still looks great — and the average is exactly what would've let that one disaster
-      slip through. So the new rig times <b>every single spoonful</b> and lines them up worst-first.</p>
+    <p>Audio runs on its own dedicated thread, and that thread lives under a hard deadline. Every
+      <b>5.3 milliseconds</b> it has to fill one <b>buffer</b> — a block of 256 audio samples —
+      and hand it to the sound card. Hand it over late and the card has nothing to play: silence
+      where sound should be, which you hear as a click. Engineers call that miss a <b>dropout</b>
+      (or <i>xrun</i>).</p>
+    <p>So the number that actually matters isn't the <i>average</i> time to fill a buffer — it's
+      the <i>worst</i> one. An average hides exactly the thing that hurts you: if 999 buffers are
+      quick and one takes far too long, the average still looks fine while that one late buffer is
+      an audible glitch. So the rig times <b>every single block</b> and lines them up
+      worst-first.</p>
   </section>
 
   <hr/>
 
   <!-- ============ PART 1: THE TAIL ============ -->
   <section>
-    <h2>1 · Even a perfect cook has a bad day</h2>
-    <p>First we watched a flawless kitchen — sixteen singers, no mistakes — for fifty thousand
-      spoonfuls. Here's how long each one took. Almost all cluster around <b>29 µs</b> (a
-      rounding error against the 5,333 µs budget). But look at the <span style="color:var(--red)">far
-      right</span>: the slowest was <b>164 µs</b> — about <b>5–6×</b> the typical one.</p>
+    <h2>1 · Even a clean engine has a tail</h2>
+    <p>First we ran a flawless signal graph — 16 oscillators mixed together, no mistakes — and
+      timed <b>50,000</b> consecutive blocks. Here's how long each one took to render. Almost all
+      cluster around <b>29 µs</b> (a rounding error against the 5,333 µs budget). But look at the
+      <span style="color:var(--red)">far right</span>: the slowest block took <b>164 µs</b> —
+      roughly <b>5–6×</b> the typical one.</p>
 
     <div class="panel">
-      <canvas id="hist" height="190" aria-label="distribution of block times"></canvas>
-      <div class="cap">50,000 spoonfuls · each bar = how many landed in that time bucket</div>
+      <canvas id="hist" height="190" aria-label="distribution of block render times"></canvas>
+      <div class="cap">50,000 blocks · each bar = how many landed in that render-time bucket</div>
     </div>
 
-    <p>We did <i>nothing wrong</i> — that long tail is the rest of the computer (the operating
-      system briefly borrowing the cook for something else). The point: a single average would
-      have reported "29 µs, all good" and hidden the existence of the slow ones entirely. You
-      can't fix — or even fear — a worst case you never measured.</p>
+    <p>We did <i>nothing wrong</i> — that long tail is the rest of the system: the operating
+      system briefly preempting our thread to run something else, a cache miss, a context switch.
+      The way engineers pin this down is <b>percentiles</b>: the p99.9 (the worst block out of
+      every thousand) was 72 µs, and the absolute max was 164 µs. A single average of "29 µs, all
+      good" erases all of it — and you can't defend against a worst case you never measured.</p>
   </section>
 
   <hr/>
 
   <!-- ============ PART 2: THE CHOKE ============ -->
   <section>
-    <h2>2 · How many singers can one cook handle?</h2>
-    <p>Next we kept adding singers and watched the cook's <i>average</i> spoonful swell toward the
-      5.3 ms wall. There's enormous room — right up until there isn't.</p>
+    <h2>2 · How much can one core take?</h2>
+    <p>Next we kept adding <b>voices</b> (oscillators) and watched the <i>average</i> render time
+      per block climb toward the 5.3 ms wall. There's enormous headroom — right up until there
+      isn't.</p>
 
     <div class="gauge panel">
       <div class="grow"><span class="lbl">64</span><div class="track"><div class="fill ok" style="width:1.4%"></div></div></div>
@@ -124,52 +131,54 @@
       <div class="grow"><span class="lbl">4096</span><div class="track"><div class="fill over" style="width:94%">151% — OVER</div></div></div>
       <div class="deadline" style="left:62.5%"><span>5.3 ms deadline →</span></div>
     </div>
-    <p class="cap" style="text-align:left">bar = average spoonful as a share of the deadline · dashed line = the deadline itself</p>
+    <p class="cap" style="text-align:left">bar = average block render time as a share of the deadline · dashed line = the deadline</p>
 
-    <p>Somewhere in the <b>low thousands of voices</b>, one cook tips over the wall — and once the
-      <i>average</i> is over, <i>every</i> spoonful is late. This ceiling is exactly what the
-      later chapters fix: hire more cooks (run on several processor cores at once) and give them
-      faster knives (chop eight numbers per stroke). For now, it's just good to know where the
-      cliff is.</p>
+    <p>Somewhere in the <b>low thousands of voices</b>, a single CPU core tips over the wall — and
+      once the <i>average</i> block is over budget, <i>every</i> block is a dropout. That ceiling
+      is exactly what the later rungs raise: spread the graph across <b>multiple cores</b>, and
+      use <b>SIMD</b> (one instruction that runs the same math on eight samples at once). For now,
+      it's just good to know where the cliff is — and to have a tool that finds it.</p>
   </section>
 
   <hr/>
 
   <!-- ============ PART 3: THE VILLAIN ============ -->
   <section>
-    <h2>3 · The one forbidden errand</h2>
-    <p>Now the real lesson. We sent the cook on <b>one quick errand</b> — fetch a fresh mixing
-      bowl from the basement (in computer terms: ask the system for new memory) — on a tiny
-      <b>0.1%</b> of spoonfuls. Harmless-looking. Watch what it does.</p>
+    <h2>3 · One forbidden operation</h2>
+    <p>Now the real lesson. We added <b>one heap memory allocation</b> on the audio thread — ask
+      the system for a fresh 4 MB buffer and touch it — on just <b>0.1%</b> of blocks. It looks
+      harmless. The reason it's forbidden: an allocation has no bounded worst case. Usually it's
+      quick, but it can drop into the operating system for fresh memory pages and take an eternity
+      by audio standards. Watch.</p>
 
     <div class="panel">
       <canvas id="monitor" height="220" aria-label="live latency monitor"></canvas>
       <div class="controls">
-        <button class="btn danger" id="errandBtn">errand: off</button>
-        <button class="btn" id="deadlineBtn">deadline: relaxed (5.3 ms)</button>
-        <span class="readout">worst <b id="worst">—</b> · clicks <b id="clicks">0</b></span>
+        <button class="btn danger" id="errandBtn">allocation: off</button>
+        <button class="btn" id="deadlineBtn">buffer: 256 samples (5.3 ms)</button>
+        <span class="readout">worst <b id="worst">—</b> · dropouts <b id="clicks">0</b></span>
       </div>
       <div class="legend">
-        <i><span class="sw" style="background:var(--teal)"></span>a spoonful (on time)</i>
-        <i><span class="sw" style="background:var(--red)"></span>late — a click</i>
+        <i><span class="sw" style="background:var(--teal)"></span>block rendered on time</i>
+        <i><span class="sw" style="background:var(--red)"></span>missed deadline — a dropout</i>
         <i><span class="sw" style="background:var(--amber)"></span>the deadline</i>
       </div>
-      <div class="cap">live, sped up so the errand is visible · height is a stretched (log) scale</div>
+      <div class="cap">live, with the allocation sped up so it's visible · height is a log scale</div>
     </div>
 
-    <p><b>Try it:</b> flip <i>errand</i> on and the occasional skyscraper appears. Now here's the
-      trap — at a <b>relaxed</b> deadline (a comfy buffer), even those skyscrapers stay under the
-      line: <b>zero clicks</b>. Everything looks fine. Then switch the deadline to <b>tight</b>
-      (the setting a musician uses to play live, where the system must respond almost instantly) —
-      and those same spikes punch right through. The clicks counter starts climbing.</p>
+    <p><b>Try it:</b> turn the <i>allocation</i> on and occasional spikes appear. Here's the trap —
+      with a roomy <b>256-sample buffer</b> (a 5.3 ms deadline), even those spikes stay under the
+      line: <b>zero dropouts</b>. Everything looks fine in testing. Now switch to a <b>32-sample
+      buffer</b> (a 0.67 ms deadline — the low-latency setting a musician uses to play live) and
+      the same spikes punch straight through. The dropout counter climbs.</p>
 
     <div class="result">
       <div class="big">+1% · 18×</div>
       <div>
-        <h3>What the stopwatch actually measured</h3>
-        <p>The errand moved the <b>average</b> spoonful by about <b>+1%</b> — utterly invisible.
-          But it blew the <b>worst</b> spoonful up by <b>~18×</b> (from 164 µs to ~2,950 µs). At a
-          comfy buffer: 0 dropouts. At a low-latency buffer: real, audible clicks.</p>
+        <h3>What the rig actually measured</h3>
+        <p>That one allocation moved the <b>average</b> block time by about <b>+1%</b> — utterly
+          invisible. But it blew the <b>worst</b> block up <b>~18×</b> (164 µs → ~2,950 µs). At a
+          256-sample buffer: 0 dropouts. At a 32-sample buffer: real, audible clicks.</p>
       </div>
     </div>
   </section>
@@ -179,16 +188,17 @@
   <!-- ============ THE RULE ============ -->
   <section>
     <h2>Why this is the whole ballgame</h2>
-    <p>That tiny errand is invisible to the average <i>and</i> survives a relaxed deadline — so it
-      sails through casual testing. Then a user drops to low latency to play live, and it becomes
-      a click they can't explain. <b>This is why the audio thread is forbidden from ever fetching
-      memory, waiting on a lock, or touching the disk:</b> one rare unbounded errand is harmless
-      on paper and fatal in the tail.</p>
-    <p>It's also why this whole project optimizes for <i>"never late"</i> rather than <i>"fast on
-      average."</i> The rig you just played with is now our permanent stopwatch — every future
-      change gets weighed by its worst spoonful, not its typical one.</p>
-    <p class="muted">Next: hire more cooks. Split the kitchen across several processor cores so the
-      choke ceiling rises — without ever breaking the never-late rule.</p>
+    <p>That one allocation is invisible in the average <i>and</i> survives a roomy buffer — so it
+      sails through casual testing. Then a user drops to low latency to play live and it becomes a
+      click they can't explain. <b>This is why the real-time audio thread may never allocate
+      memory, wait on a lock, or touch the disk:</b> any operation without a bounded worst case is
+      harmless on paper and fatal in the tail.</p>
+    <p>It's also why the whole project optimizes for the <i>worst case</i> ("never late") rather
+      than the <i>average</i> ("fast on average"). The rig you just played with is now the
+      permanent measuring stick — every future change is judged by its worst block, not its
+      typical one.</p>
+    <p class="muted">Next: raise the ceiling from Part 2 by spreading the signal graph across
+      several CPU cores at once — without ever breaking the never-late rule.</p>
   </section>
 
   <footer>daw-lab · <a href="engine-so-far/index.html" style="color:var(--muted)">← the engine so far</a> · runnable demo: <code>cargo run --release --bin rig</code></footer>
@@ -261,23 +271,23 @@
 
   errandBtn.addEventListener('click', ()=>{
     errand = !errand;
-    errandBtn.textContent = 'errand: ' + (errand?'ON':'off');
+    errandBtn.textContent = 'allocation: ' + (errand?'ON':'off');
     errandBtn.classList.toggle('on', errand);
     clicks = 0; worst = 0;
   });
   deadlineBtn.addEventListener('click', ()=>{
     tight = !tight;
-    deadlineBtn.textContent = 'deadline: ' + (tight?'tight (0.67 ms)':'relaxed (5.3 ms)');
+    deadlineBtn.textContent = 'buffer: ' + (tight?'32 samples (0.67 ms)':'256 samples (5.3 ms)');
     deadlineBtn.classList.toggle('on', tight);
     clicks = 0;
   });
 
   function nextTime(){
-    // a normal spoonful: ~26-40µs with a little jitter
+    // a normal block: ~26-40µs render time with a little jitter
     let t = 26 + Math.random()*8 + (Math.random()<0.04 ? 60*Math.random() : 0);
     if(errand){
       sinceSpike++;
-      // a "skyscraper" every ~12 spoonfuls (sped up from the real 0.1% so it's watchable)
+      // an allocation spike every ~12 blocks (sped up from the real 0.1% so it's watchable)
       if(sinceSpike > 8 + Math.random()*8){
         sinceSpike = 0;
         const r = Math.random();
@@ -325,7 +335,7 @@
   }
 
   function tick(){
-    if(frame % 5 === 0){      // advance one spoonful every 5 frames (~12/sec)
+    if(frame % 5 === 0){      // advance one block every 5 frames (~12/sec)
       times.shift(); flash.shift();
       const t = nextTime();
       times.push(t); flash.push(true);
