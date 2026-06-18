@@ -1,0 +1,288 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Seeing the graph · daw-lab</title>
+<style>
+  :root{
+    --bg:#0f1216; --panel:#161b22; --panel2:#1b212a; --ink:#e7edf3; --muted:#9aa7b4;
+    --line:#252c36; --amber:#f0a85c; --teal:#5fd1c4; --violet:#a78bfa; --pink:#f08ca8;
+    --green:#8fd98f; --red:#f0846c;
+    --radius:16px; --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
+  body{margin:0;background:radial-gradient(1200px 600px at 70% -10%,#18202b 0,var(--bg) 55%);
+    color:var(--ink);font-family:var(--sans);line-height:1.65;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:820px;margin:0 auto;padding:40px 20px 96px}
+  a{color:var(--teal)}
+  .back{font-family:var(--mono);font-size:13px;color:var(--muted);text-decoration:none}
+  .back:hover{color:var(--amber)}
+  .kicker{font-family:var(--mono);font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:var(--amber);margin:26px 0 8px}
+  h1{font-size:clamp(30px,7vw,50px);line-height:1.05;margin:0 0 14px;letter-spacing:-.025em}
+  h2{font-size:clamp(22px,5vw,30px);margin:8px 0 6px;letter-spacing:-.02em}
+  p{color:#cdd6df;max-width:64ch}
+  p.lede{color:var(--muted);font-size:clamp(17px,4.4vw,20px);max-width:60ch}
+  .muted{color:var(--muted)}
+  i{color:#dbe3ea}
+  section{margin-top:54px}
+  hr{border:none;border-top:1px solid var(--line);margin:54px 0}
+
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:18px;margin:22px 0}
+  canvas{display:block;width:100%;border-radius:12px;background:#0b0e12;border:1px solid var(--line);touch-action:manipulation}
+  .cap{font-family:var(--mono);font-size:12px;color:var(--muted);margin-top:10px;text-align:center}
+  #out{margin-top:14px}
+
+  .controls{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:14px 2px 2px}
+  .btn{font-family:var(--mono);font-size:13px;color:var(--muted);background:var(--panel2);border:1px solid var(--line);border-radius:999px;padding:9px 14px;cursor:pointer}
+  .btn:active{transform:translateY(1px)}
+  .btn.voice.on{color:var(--ink)}
+  .btn.voice[data-v="0"].on{border-color:var(--teal);color:var(--teal)}
+  .btn.voice[data-v="1"].on{border-color:var(--violet);color:var(--violet)}
+  .btn.voice[data-v="2"].on{border-color:var(--pink);color:var(--pink)}
+  .slider{display:flex;align-items:center;gap:9px;font-family:var(--mono);font-size:13px;color:var(--muted);margin-left:auto}
+  .slider input{accent-color:var(--amber);width:108px}
+  .slider b{color:var(--amber);min-width:34px}
+
+  .legend{font-family:var(--mono);font-size:12px;color:var(--muted);display:flex;gap:16px;flex-wrap:wrap;margin-top:12px}
+  .legend i{font-style:normal;display:inline-flex;align-items:center;gap:6px}
+  .sw{width:11px;height:11px;border-radius:3px;display:inline-block}
+
+  footer{margin-top:64px;color:var(--muted);font-size:13px;font-family:var(--mono);border-top:1px solid var(--line);padding-top:20px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="back" href="../index.html">← all sketches</a>
+  <p class="kicker">DAW engine · the signal graph</p>
+  <h1>Seeing the graph</h1>
+  <p class="lede">Every sound the engine makes comes out of a <i>graph</i>: a handful of small
+    processing nodes wired together, with one block of audio flowing through them from the sources
+    to the output. Here it is, live — poke it and watch the signal change.</p>
+
+  <!-- ============ NODES & WIRES ============ -->
+  <section>
+    <h2>Nodes and wires</h2>
+    <p>A <b>node</b> does exactly one job to a buffer of samples. A <b>source</b> (an oscillator)
+      fills the buffer with a fresh tone. A <b>transform</b> (a gain) reshapes the buffer it's
+      handed — here, scaling its volume. A <b>mixer</b> sums several buffers into one. A <b>wire</b>
+      (an edge) just means "this node's output buffer is that node's input." String them together
+      and you have a graph.</p>
+  </section>
+
+  <!-- ============ THE LIVE GRAPH ============ -->
+  <section>
+    <div class="panel">
+      <canvas id="graph" height="300" aria-label="interactive signal graph"></canvas>
+      <canvas id="out" height="120" aria-label="final output waveform"></canvas>
+      <div class="controls">
+        <button class="btn voice on" data-v="0">osc 220</button>
+        <button class="btn voice on" data-v="1">osc 330</button>
+        <button class="btn voice" data-v="2">osc 440</button>
+        <label class="slider">gain <input type="range" id="gain" min="0" max="1" step="0.01" value="0.80"><b id="gainval">0.80</b></label>
+      </div>
+      <div class="legend">
+        <i><span class="sw" style="background:var(--teal)"></span>each node's own output</i>
+        <i><span class="sw" style="background:var(--amber)"></span>the block flowing downstream</i>
+        <i><span class="sw" style="background:var(--green)"></span>node being evaluated now</i>
+      </div>
+      <div class="cap">top: the graph, each node drawing its live output · bottom: the final block sent to the speaker</div>
+    </div>
+    <p><b>Try it:</b> mute and un-mute the three oscillators and watch the <b>mix</b> node — and the
+      final output below — get simpler or richer. Drag <b>gain</b> and watch the output's height
+      shrink and grow while the shape stays the same. Every change you make is just editing the
+      graph; the sound is whatever the graph currently computes.</p>
+  </section>
+
+  <hr/>
+
+  <!-- ============ ORDER ============ -->
+  <section>
+    <h2>Order matters</h2>
+    <p>To fill one block, the engine walks the graph <b>sources first</b> — the green highlight
+      sweeping left to right. That order isn't cosmetic: a node can't run until the buffers feeding
+      it exist, so the mixer must wait for its oscillators, and the gain must wait for the mixer.
+      Evaluate the nodes in that dependency order (engineers call it <i>topological order</i>) and
+      every node finds its inputs ready. One pass through the graph = one block. Then it does it all
+      again for the next block, 5.3 ms later.</p>
+  </section>
+
+  <hr/>
+
+  <!-- ============ WHY A GRAPH ============ -->
+  <section>
+    <h2>Why a graph scales to a whole DAW</h2>
+    <p>The reason this shape is worth building on: it grows without new concepts. A <b>track</b> is
+      just a little sub-graph. A <b>bus</b> is a mixer node. An <b>effect or plugin</b> is one more
+      transform node obeying the same contract as the gain. Add hundreds of them and the engine
+      still does the same thing — walk the nodes in order, hand each one a buffer. The parameters
+      you twist (like that gain slider) ride in on a separate path, the <a
+      href="../engine-so-far/index.html">membrane</a>, so the knobs never block the audio.</p>
+    <p class="muted">Next rung: this same graph is what we split across several CPU cores —
+      independent branches rendered in parallel — to raise the ceiling the worst-case rig found.</p>
+  </section>
+
+  <footer>daw-lab · <a href="../why-the-average-lies/index.html" style="color:var(--muted)">← why the average lies</a> · runnable: <code>cargo run --release --bin mix</code></footer>
+</div>
+
+<script>
+(function(){
+  const TAU = Math.PI*2;
+  function fit(canvas, cssHeight){
+    const dpr = Math.max(1, Math.min(3, window.devicePixelRatio||1));
+    const w = canvas.clientWidth;
+    canvas.width = Math.round(w*dpr); canvas.height = Math.round(cssHeight*dpr);
+    const ctx = canvas.getContext('2d'); ctx.setTransform(dpr,0,0,dpr,0,0);
+    return {ctx,w,h:cssHeight};
+  }
+  function rr(ctx,x,y,w,h,r){
+    ctx.beginPath();
+    ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r);
+    ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath();
+  }
+
+  // ---- state ----
+  const COLORS = ['#5fd1c4','#a78bfa','#f08ca8'];
+  const voices = [
+    {freq:220, on:true},
+    {freq:330, on:true},
+    {freq:440, on:false},
+  ];
+  let gain = 0.80;
+  let phase = 0;
+
+  // ---- controls ----
+  document.querySelectorAll('.btn.voice').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const v = +btn.dataset.v;
+      voices[v].on = !voices[v].on;
+      btn.classList.toggle('on', voices[v].on);
+    });
+  });
+  const gainInput = document.getElementById('gain');
+  const gainVal = document.getElementById('gainval');
+  gainInput.addEventListener('input', ()=>{ gain = +gainInput.value; gainVal.textContent = gain.toFixed(2); });
+
+  // ---- signal model ----
+  function activeCount(){ return voices.filter(v=>v.on).length; }
+  // value of one source at normalized position t (0..1 across the little scope)
+  function srcVal(v, t){ return Math.sin(t*(voices[v].freq/110)*TAU + phase); }
+  // mixed value (sum of active voices, scaled so it can't clip), before gain
+  function mixVal(t){
+    const n = activeCount(); if(n===0) return 0;
+    let s = 0; for(let v=0;v<voices.length;v++) if(voices[v].on) s += srcVal(v,t);
+    return (s/n);
+  }
+  function outVal(t){ return mixVal(t)*gain; }
+
+  // draw a waveform described by f(t)->[-1,1] inside a rect
+  function wave(ctx,x,y,w,h,f,color,lw){
+    ctx.save(); ctx.beginPath(); ctx.rect(x,y,w,h); ctx.clip();
+    ctx.beginPath();
+    for(let px=0;px<=w;px++){ const t=px/w; const yy=y+h/2 - f(t)*(h*0.40);
+      px===0?ctx.moveTo(x+px,yy):ctx.lineTo(x+px,yy); }
+    ctx.strokeStyle=color; ctx.lineWidth=lw||1.5; ctx.stroke(); ctx.restore();
+  }
+
+  // ---- the graph canvas ----
+  const gc = document.getElementById('graph');
+  function drawGraph(){
+    const {ctx,w,h} = fit(gc,300);
+    ctx.clearRect(0,0,w,h);
+    const evalCol = Math.floor((performance.now()/700) % 4); // 0..3 sweep
+
+    // node geometry (centers), responsive
+    const colX = [0.10*w, 0.40*w, 0.63*w, 0.86*w];
+    const srcW = Math.min(0.20*w, 96), srcH = 52;
+    const srcY = [0.18*h, 0.50*h, 0.82*h];
+    const srcLeft = Math.max(6, 0.10*w - srcW/2), srcRight = srcLeft + srcW;
+    const midW = Math.min(0.18*w, 92), midH = 60;
+    const mid = h/2;
+    const nodes = {
+      mix:  {x:colX[1]-midW/2, y:mid-midH/2, w:midW, h:midH, col:1},
+      gain: {x:colX[2]-midW/2, y:mid-midH/2, w:midW, h:midH, col:2},
+      out:  {x:colX[3]-midW/2, y:mid-midH*0.65, w:midW, h:midH*1.3, col:3},
+    };
+
+    // wires first (so nodes sit on top)
+    const flow = (performance.now()/1000) % 1;
+    function wire(x1,y1,x2,y2,on){
+      const mx=(x1+x2)/2;
+      ctx.beginPath(); ctx.moveTo(x1,y1); ctx.bezierCurveTo(mx,y1,mx,y2,x2,y2);
+      ctx.strokeStyle = on? 'rgba(95,209,196,0.55)':'rgba(120,134,148,0.18)';
+      ctx.lineWidth=2; ctx.stroke();
+      if(on){ // a couple of flow dots moving downstream
+        [0,0.5].forEach(off=>{ const p=(flow+off)%1;
+          const bx = (1-p)*(1-p)*x1 + 2*(1-p)*p*mx + p*p*x2;
+          const by = (1-p)*(1-p)*y1 + 2*(1-p)*p*y2 + p*p*y2; // approx
+          ctx.beginPath(); ctx.arc(bx,by,2.6,0,TAU); ctx.fillStyle='#f0a85c'; ctx.fill();
+        });
+      }
+    }
+    // source -> mix
+    for(let v=0;v<3;v++){
+      wire(srcRight, srcY[v], nodes.mix.x, mid, voices[v].on);
+    }
+    // mix -> gain -> out
+    wire(nodes.mix.x+nodes.mix.w, mid, nodes.gain.x, mid, activeCount()>0);
+    wire(nodes.gain.x+nodes.gain.w, mid, nodes.out.x, mid, activeCount()>0);
+
+    function box(n, label, color, on, drawBody){
+      const glow = (n.col===evalCol);
+      ctx.save();
+      if(glow){ ctx.shadowColor='rgba(143,217,143,0.9)'; ctx.shadowBlur=14; }
+      rr(ctx,n.x,n.y,n.w,n.h,11);
+      ctx.fillStyle = on? '#11161d':'#0d1014';
+      ctx.fill();
+      ctx.lineWidth = glow?2:1.3;
+      ctx.strokeStyle = glow? '#8fd98f' : (on? color : 'rgba(120,134,148,0.4)');
+      ctx.stroke(); ctx.restore();
+      ctx.fillStyle = on? color : 'rgba(154,167,180,0.6)';
+      ctx.font = '11px ui-monospace, monospace'; ctx.textAlign='center';
+      ctx.fillText(label, n.x+n.w/2, n.y+15); ctx.textAlign='left';
+      if(drawBody && on) drawBody();
+    }
+
+    // source boxes
+    for(let v=0;v<3;v++){
+      const n = {x:srcLeft, y:srcY[v]-srcH/2, w:srcW, h:srcH, col:0};
+      box(n, voices[v].on? ('osc '+voices[v].freq) : 'muted', COLORS[v], voices[v].on, ()=>{
+        wave(ctx, n.x+8, n.y+20, n.w-16, n.h-26, (t)=>srcVal(v,t), COLORS[v], 1.4);
+      });
+    }
+    // mix
+    box(nodes.mix, 'mix', '#f08ca8', true, ()=>{
+      wave(ctx, nodes.mix.x+8, nodes.mix.y+20, nodes.mix.w-16, nodes.mix.h-26, mixVal, '#f08ca8', 1.6);
+    });
+    // gain (shows its value + a body wave already scaled)
+    box(nodes.gain, 'gain ×'+gain.toFixed(2), '#a78bfa', true, ()=>{
+      wave(ctx, nodes.gain.x+8, nodes.gain.y+20, nodes.gain.w-16, nodes.gain.h-26, outVal, '#a78bfa', 1.6);
+    });
+    // out
+    box(nodes.out, 'out', '#f0a85c', true, ()=>{
+      wave(ctx, nodes.out.x+8, nodes.out.y+20, nodes.out.w-16, nodes.out.h-26, outVal, '#f0a85c', 2);
+    });
+  }
+
+  // ---- the big output scope ----
+  const oc = document.getElementById('out');
+  function drawOut(){
+    const {ctx,w,h} = fit(oc,120);
+    ctx.clearRect(0,0,w,h);
+    ctx.strokeStyle='rgba(240,168,92,0.12)'; ctx.lineWidth=1;
+    ctx.beginPath(); ctx.moveTo(0,h/2); ctx.lineTo(w,h/2); ctx.stroke();
+    if(activeCount()===0){
+      ctx.fillStyle='#6b7785'; ctx.font='13px ui-monospace, monospace'; ctx.textAlign='center';
+      ctx.fillText('silence — every source muted', w/2, h/2+4); ctx.textAlign='left'; return;
+    }
+    wave(ctx, 0, 0, w, h, outVal, '#f0a85c', 2.2);
+  }
+
+  function loop(){ phase += 0.05; drawGraph(); drawOut(); requestAnimationFrame(loop); }
+  loop();
+})();
+</script>
+</body>
+</html>
