@@ -37,6 +37,15 @@
   .rules li{color:#cdd6df}
   .x{color:var(--red);font-weight:700}
   .ok{color:var(--green);font-weight:700}
+  .gcat{padding:15px 0;border-top:1px solid var(--line)}
+  .gcat:first-child{padding-top:2px;border-top:none}
+  .gcat>.head,.allowed>.head{font-family:var(--mono);font-size:14.5px;color:#e7edf3;margin-bottom:8px}
+  .why{color:var(--muted);font-size:14px;margin:6px 0 10px;max-width:60ch}
+  .terms{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+  .terms li{font-size:14px;line-height:1.5;color:#cdd6df}
+  .terms .d{color:var(--muted)}
+  .terms .d::before{content:"— "}
+  .allowed{margin-top:16px;padding:14px 16px;border:1px solid rgba(143,217,143,0.3);border-radius:10px;background:#12201a}
 
   .chip{display:inline-block;font-family:var(--mono);font-size:11px;letter-spacing:.07em;padding:3px 10px;border-radius:999px;margin:14px 0 -2px}
   .chip.no{color:var(--red);border:1px solid rgba(240,132,108,0.45);background:#241413}
@@ -67,17 +76,70 @@
     <h2>The rule, and why</h2>
     <p>The audio thread runs under a hard 5.3 ms deadline, so every operation it performs must have
       a <b>bounded, predictable cost</b>. Anything whose worst case is unbounded — could ask the
-      operating system for something, could wait on another thread — is banned. Concretely, a
-      function on the audio thread must contain none of:</p>
+      operating system for something, could wait on another thread — is banned. Here's the banned
+      list, with a plain-English gloss for each piece of Rust:</p>
     <div class="panel">
-      <ul class="rules">
-        <li><span class="x">✗</span> allocation — <code>vec!</code>, <code>Box::new</code>, <code>String</code>, <code>format!</code>, <code>.collect()</code></li>
-        <li><span class="x">✗</span> deallocation — dropping any heap value (that's a hidden <code>free()</code>)</li>
-        <li><span class="x">✗</span> blocking — <code>Mutex::lock</code>, <code>RwLock</code>, channels that may wait or allocate</li>
-        <li><span class="x">✗</span> I/O &amp; syscalls — <code>println!</code>, files, sockets, the clock</li>
-        <li><span class="x">✗</span> unbounded work — <code>HashMap</code> growth, sorting unbounded input, unbounded loops</li>
-        <li style="margin-top:8px"><span class="ok">✓</span> allowed: arithmetic, fixed slices, atomics, lock-free queues, preallocated pools</li>
-      </ul>
+      <div class="gcat">
+        <div class="head"><span class="x">✗</span> allocation</div>
+        <p class="why">Each of these asks the system for a fresh chunk of memory while the program
+          is running — and reserving memory can take an unpredictable amount of time.</p>
+        <ul class="terms">
+          <li><code>vec!</code><span class="d">creates a growable array (like a JavaScript array or Python list)</span></li>
+          <li><code>Box::new</code><span class="d">puts a single value on the heap and hands back a pointer to it</span></li>
+          <li><code>String</code><span class="d">an owned, growable piece of text (vs. a fixed, read-only one)</span></li>
+          <li><code>format!</code><span class="d">builds a string from a template — like JS template literals or <code>printf</code></span></li>
+          <li><code>.collect()</code><span class="d">runs through a sequence and gathers the results into a new array or map</span></li>
+        </ul>
+      </div>
+      <div class="gcat">
+        <div class="head"><span class="x">✗</span> deallocation</div>
+        <p class="why">Rust has no garbage collector: the instant you stop using a heap value its
+          memory is handed back right then — and handing memory back is as unpredictable as taking
+          it.</p>
+        <ul class="terms">
+          <li><code>drop</code><span class="d">letting a heap-backed value (a <code>Vec</code>, <code>Box</code>, or <code>String</code>) go out of scope, which triggers a hidden <code>free()</code></span></li>
+        </ul>
+      </div>
+      <div class="gcat">
+        <div class="head"><span class="x">✗</span> blocking</div>
+        <p class="why">These can put the audio thread to sleep until some other thread does
+          something — and "until something else happens" has no time limit.</p>
+        <ul class="terms">
+          <li><code>Mutex::lock</code><span class="d">a gate only one thread may hold at a time; if another holds it, you wait</span></li>
+          <li><code>RwLock</code><span class="d">same idea, but allows many readers or one writer — still makes you wait</span></li>
+          <li><code>channels</code><span class="d">pipes for passing messages between threads; the standard ones can wait for room or allocate per message</span></li>
+        </ul>
+      </div>
+      <div class="gcat">
+        <div class="head"><span class="x">✗</span> I/O &amp; syscalls</div>
+        <p class="why">A <i>syscall</i> is any request to the operating system, and the OS gives no
+          guarantee how quickly it will answer.</p>
+        <ul class="terms">
+          <li><code>println!</code><span class="d">prints to the console — which goes through the OS and even takes an internal lock</span></li>
+          <li><code>files / sockets</code><span class="d">reading or writing disk or network: slow and open-ended</span></li>
+          <li><code>the clock</code><span class="d">even asking "what time is it?" is a trip into the OS</span></li>
+        </ul>
+      </div>
+      <div class="gcat">
+        <div class="head"><span class="x">✗</span> unbounded work</div>
+        <p class="why">Operations whose running time depends on the data with no fixed ceiling —
+          fine on average, occasionally enormous.</p>
+        <ul class="terms">
+          <li><code>HashMap</code><span class="d">a key→value dictionary (like a JS object or Python dict); adding to it can trigger a costly resize</span></li>
+          <li><code>sorting unbounded input</code><span class="d">sorting a list whose length you don't control</span></li>
+          <li><code>unbounded loops</code><span class="d">loops that might run an unknown number of times</span></li>
+        </ul>
+      </div>
+      <div class="allowed">
+        <div class="head"><span class="ok">✓</span> allowed — fast, fixed-cost, predictable</div>
+        <ul class="terms">
+          <li><code>arithmetic</code><span class="d">plain math on numbers already in hand</span></li>
+          <li><code>fixed slices</code><span class="d">a window into memory you already own, with a known size</span></li>
+          <li><code>atomics</code><span class="d">single values several threads can read and write safely without a lock</span></li>
+          <li><code>lock-free queues</code><span class="d">message pipes designed never to make either side wait</span></li>
+          <li><code>preallocated pools</code><span class="d">memory grabbed once, up front, then reused forever</span></li>
+        </ul>
+      </div>
     </div>
     <p>Every technique below is just a way of upholding one of those lines — and the last one is how
       we <i>enforce</i> them automatically instead of hoping.</p>
