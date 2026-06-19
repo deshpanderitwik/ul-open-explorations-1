@@ -46,6 +46,8 @@
   .terms .d{color:var(--muted)}
   .terms .d::before{content:"— "}
   .allowed{margin-top:16px;padding:14px 16px;border:1px solid rgba(143,217,143,0.3);border-radius:10px;background:#12201a}
+  .notes{margin:0 0 14px;padding:12px 16px;border:1px solid var(--line);border-radius:10px;background:#12161c}
+  .notes .lbl{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0 0 8px}
 
   .chip{display:inline-block;font-family:var(--mono);font-size:11px;letter-spacing:.07em;padding:3px 10px;border-radius:999px;margin:14px 0 -2px}
   .chip.no{color:var(--red);border:1px solid rgba(240,132,108,0.45);background:#241413}
@@ -167,6 +169,15 @@
     <span class="k">let</span> scratch = &amp;<span class="k">mut</span> self.scratch; <span class="c">// ✓ just a borrow — zero allocation</span>
     mix_into(scratch, out);
 }</pre>
+    <div class="notes">
+      <div class="lbl">reading the Rust</div>
+      <ul class="terms">
+        <li><code>&amp;mut</code><span class="d">a temporary read-and-write borrow of something you don't own</span></li>
+        <li><code>[f32]</code><span class="d">a "slice" — a view over a run of 32-bit float audio samples</span></li>
+        <li><code>Vec&lt;f32&gt;</code><span class="d">a growable array of those samples (the thing that gets allocated)</span></li>
+        <li><code>struct</code><span class="d">a bundle of named fields, like an object or record</span></li>
+      </ul>
+    </div>
     <p>For things that come and go — synth voices, active notes — don't allocate per note. Keep a
       <b>fixed pool</b> (a <code>Vec</code> with reserved capacity, or a fixed array) and reuse
       slots. The pool is sized for the worst case up front; the audio thread only ever indexes into
@@ -195,6 +206,15 @@ self.cutoff = p.cutoff;</pre>
 <span class="k">while</span> <span class="k">let</span> <span class="t">Ok</span>(ev) = self.events.pop() { <span class="c">// ✓ drains what's queued, then returns</span>
     self.apply(ev);
 }</pre>
+    <div class="notes">
+      <div class="lbl">reading the Rust</div>
+      <ul class="terms">
+        <li><code>.lock().unwrap()</code><span class="d">grab the lock, crashing if it fails — the danger is that it can <i>wait</i></span></li>
+        <li><code>.load(Ordering::Relaxed)</code><span class="d">atomically read the value; "Relaxed" is the cheapest ordering, fine for one lone number</span></li>
+        <li><code>while let Ok(ev) = …pop()</code><span class="d">keep pulling events off the queue until it's empty</span></li>
+        <li><code>Ok(…)</code><span class="d">the success branch of a result — Rust makes you handle the empty case explicitly</span></li>
+      </ul>
+    </div>
     <p>This is the <a href="../engine-so-far/index.html">membrane</a> from the very first demo,
       grown up: the audio thread and the rest of the program meet only through primitives that
       cannot block it.</p>
@@ -220,6 +240,14 @@ self.cutoff = p.cutoff;</pre>
 <span class="k">while</span> <span class="k">let</span> <span class="t">Ok</span>(garbage) = trash.pop() {
     <span class="k">drop</span>(garbage); <span class="c">// ← free() runs off the audio thread</span>
 }</pre>
+    <div class="notes">
+      <div class="lbl">reading the Rust</div>
+      <ul class="terms">
+        <li><code>let _ =</code><span class="d">run this, but deliberately ignore the value it hands back</span></li>
+        <li><code>.push(…)</code><span class="d">add an item to the queue (here, without ever waiting)</span></li>
+        <li><code>drop(x)</code><span class="d">destroy a value right now, running its cleanup — i.e. the <code>free()</code></span></li>
+      </ul>
+    </div>
   </section>
 
   <hr/>
@@ -237,6 +265,13 @@ self.cutoff = p.cutoff;</pre>
 <span class="c">//   aarch64: set the FZ bit in FPCR            (Apple Silicon)</span>
 <span class="c">// in practice: the `no_denormals` crate, or a few lines of core::arch.</span>
 <span class="k">fn</span> on_audio_start() { no_denormals::flush_to_zero(); } <span class="c">// tiny near-zeros now cost nothing</span></pre>
+    <div class="notes">
+      <div class="lbl">reading the Rust</div>
+      <ul class="terms">
+        <li><code>::</code><span class="d">a path separator — it reaches into a library or module for the thing inside it</span></li>
+        <li><code>no_denormals</code><span class="d">a small third-party crate (a library/package, like an npm module)</span></li>
+      </ul>
+    </div>
   </section>
 
   <hr/>
@@ -270,6 +305,20 @@ self.cutoff = p.cutoff;</pre>
 <span class="nm">#[global_allocator]</span>
 <span class="k">static</span> GLOBAL: <span class="t">Tripwire</span> = <span class="t">Tripwire</span>;</pre>
 
+    <div class="notes">
+      <div class="lbl">reading the Rust</div>
+      <ul class="terms">
+        <li><code>use</code><span class="d">pulls names in from the standard library so we can use them</span></li>
+        <li><code>thread_local!</code><span class="d">a variable with its own separate copy on each thread — here, "are we on the audio thread?"</span></li>
+        <li><code>static</code><span class="d">one global value that lives for the entire run of the program</span></li>
+        <li><code>unsafe</code><span class="d">switches off Rust's safety net; required to define an allocator, and you take responsibility for correctness</span></li>
+        <li><code>impl GlobalAlloc for Tripwire</code><span class="d">make our <code>Tripwire</code> type act as the program's source of memory (<code>GlobalAlloc</code> is Rust's interface for that)</span></li>
+        <li><code>&amp;self</code><span class="d">the value the method was called on (like <code>this</code>)</span></li>
+        <li><code>-&gt; *mut u8</code><span class="d">hands back a raw pointer to the reserved bytes</span></li>
+        <li><code>panic!</code><span class="d">stop the program immediately with a message</span></li>
+        <li><code>#[global_allocator]</code><span class="d">tells Rust to route <i>every</i> memory request in the whole program through our <code>Tripwire</code></span></li>
+      </ul>
+    </div>
     <p>Then flip the flag around the render callback:</p>
     <pre class="good">ON_AUDIO.with(|on| on.set(<span class="k">true</span>));
 render_block(out);  <span class="c">// ✓ any stray alloc OR free in here now panics</span>
