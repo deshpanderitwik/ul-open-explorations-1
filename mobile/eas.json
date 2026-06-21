@@ -1,0 +1,25 @@
+{
+  "cli": {
+    "version": ">= 5.0.0"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal"
+    },
+    "preview": {
+      "distribution": "internal"
+    },
+    "production": {}
+  },
+  "submit": {
+    "production": {
+      "ios": {
+        "//": "These placeholders are filled in from the user's Apple Developer account.",
+        "appleId": "PLACEHOLDER_apple_id@example.com",
+        "ascAppId": "PLACEHOLDER_app_store_connect_app_id",
+        "appleTeamId": "PLACEHOLDER_apple_team_id"
+      }
+    }
+  }
+}
