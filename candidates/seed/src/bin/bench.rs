@@ -12,7 +12,7 @@
 //!   * realtime     — heap allocations that happen ON the render path (must be 0)
 //!   * latency      — per-block time distribution at a fixed load (mean..max)
 //!   * dropouts     — blocks that blew the 5.33 ms (and 0.67 ms low-latency) budget
-//!   * throughput   — the most voices that still fit under budget (the headline)
+//!   * throughput   — the exact voice ceiling under budget, found by binary search
 
 use std::alloc::{GlobalAlloc, Layout, System};
 use std::hint::black_box;
@@ -51,6 +51,7 @@ const HEADLINE_VOICES: usize = 64;
 const ITERS: usize = 50_000;
 const BUDGET_NS: f64 = (BLOCK as f64 / SAMPLE_RATE as f64) * 1e9; // 5.33 ms
 const LOWLAT_NS: f64 = (32.0 / SAMPLE_RATE as f64) * 1e9; // 0.67 ms low-latency
+const VOICE_CAP: usize = 1 << 16; // hard ceiling on the throughput search
 
 fn build(n: usize) -> Engine {
     let mut e = Engine::new(SAMPLE_RATE, BLOCK);
@@ -64,6 +65,49 @@ fn build(n: usize) -> Engine {
 fn percentile(sorted: &[f64], p: f64) -> f64 {
     let i = ((p / 100.0) * (sorted.len() - 1) as f64).round() as usize;
     sorted[i]
+}
+
+/// Mean per-block render time (ns) for an `n`-voice graph.
+fn mean_block_ns(n: usize, out: &mut [f32]) -> f64 {
+    let mut g = build(n);
+    for _ in 0..64 {
+        g.render(out); // warm caches / branch predictor
+    }
+    let blocks = 500;
+    let t = Instant::now();
+    for _ in 0..blocks {
+        g.render(out);
+        black_box(out[0]);
+    }
+    t.elapsed().as_secs_f64() * 1e9 / blocks as f64
+}
+
+/// The largest voice count whose mean block fits under `threshold_ns`.
+/// Exponential search for a failing upper bound, then binary search — so a small
+/// efficiency gain moves this number, unlike a coarse power-of-two sweep.
+fn max_voices_under(threshold_ns: f64, out: &mut [f32]) -> usize {
+    let mut lo = 1usize; // a single voice is assumed to fit
+    if mean_block_ns(lo, out) > threshold_ns {
+        return 0;
+    }
+    let mut hi = 2usize;
+    while hi <= VOICE_CAP && mean_block_ns(hi, out) <= threshold_ns {
+        lo = hi;
+        hi *= 2;
+    }
+    if hi > VOICE_CAP {
+        return VOICE_CAP; // never failed within the cap
+    }
+    // Invariant: lo passes, hi fails. Bisect to the boundary.
+    while hi - lo > 1 {
+        let mid = lo + (hi - lo) / 2;
+        if mean_block_ns(mid, out) <= threshold_ns {
+            lo = mid;
+        } else {
+            hi = mid;
+        }
+    }
+    lo
 }
 
 fn main() {
@@ -98,32 +142,13 @@ fn main() {
     let drop_comfy = times.iter().filter(|&&t| t > BUDGET_NS).count();
     let drop_low = times.iter().filter(|&&t| t > LOWLAT_NS).count();
 
-    // ---- throughput sweep: most voices that still fit under budget ----------
-    let mut max_50 = 0usize; // under 50% budget (headroom for the tail)
-    let mut max_full = 0usize; // under the full budget
-    for &n in &[16usize, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192] {
-        let mut g = build(n);
-        for _ in 0..50 {
-            g.render(&mut out);
-        }
-        let blocks = 300;
-        let t = Instant::now();
-        for _ in 0..blocks {
-            g.render(&mut out);
-            black_box(out[0]);
-        }
-        let per = t.elapsed().as_secs_f64() * 1e9 / blocks as f64;
-        if per <= BUDGET_NS {
-            max_full = n;
-        }
-        if per <= BUDGET_NS * 0.5 {
-            max_50 = n;
-        }
-    }
+    // ---- throughput: the exact voice ceiling, by binary search --------------
+    let max_50 = max_voices_under(BUDGET_NS * 0.5, &mut out); // headroom for the tail
+    let max_full = max_voices_under(BUDGET_NS, &mut out);
 
     // ---- emit one JSON line (no serde: zero deps, can't drift) --------------
     println!(
-        "{{\"schema\":\"daw-bench/v1\",\"ok\":true,\
+        "{{\"schema\":\"daw-bench/v2\",\"ok\":true,\
 \"config\":{{\"sample_rate\":{},\"block_size\":{},\"headline_voices\":{},\"iters\":{}}},\
 \"correctness\":{{\"finite\":{},\"in_range\":{},\"nonzero\":{}}},\
 \"realtime\":{{\"alloc_calls_during_render\":{}}},\

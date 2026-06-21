@@ -48,9 +48,13 @@ def gate_and_fitness(metrics: dict) -> tuple[float, str]:
 
     Gates (any failure -> fitness 0): the engine must be correct AND real-time
     safe AND drop no blocks at the comfortable budget. Only then does throughput
-    count. Primary fitness = the most voices that fit under HALF the budget
-    (headroom for the tail). This is unfakeable: the harness, not the candidate,
-    produced every number below.
+    count.
+
+    Fitness = max_voices_50pct + (1 - tail_ratio), where tail_ratio is the
+    p99.9 block time at the headline load as a fraction of the budget (clamped to
+    [0, 1]). The integer voice ceiling dominates; the sub-1 tail term only ever
+    breaks ties between engines of equal throughput, rewarding the tighter tail.
+    Every number is produced by the harness, not the candidate, so it's unfakeable.
     """
     c = metrics.get("correctness", {})
     rt = metrics.get("realtime", {})
@@ -67,8 +71,13 @@ def gate_and_fitness(metrics: dict) -> tuple[float, str]:
         if not ok:
             return 0.0, f"gate_failed:{name}"
 
+    cfg = metrics.get("config", {})
+    budget_us = (cfg.get("block_size", 256) / cfg.get("sample_rate", 48000)) * 1e6
+    p99_9 = metrics.get("latency_us", {}).get("p99_9", budget_us)
+    tail_ratio = min(1.0, max(0.0, p99_9 / budget_us))
+
     voices = float(metrics.get("throughput", {}).get("max_voices_50pct", 0))
-    return voices, "ok"
+    return voices + (1.0 - tail_ratio), "ok"
 
 
 def evaluate(candidate: pathlib.Path, parent: str | None, record: bool) -> dict:

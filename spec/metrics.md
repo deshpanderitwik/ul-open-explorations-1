@@ -7,7 +7,7 @@ The single source of truth for how a candidate is scored. Implemented in
 
 ```jsonc
 {
-  "schema": "daw-bench/v1",
+  "schema": "daw-bench/v2",
   "ok": true,
   "config":      { "sample_rate": 48000, "block_size": 256, "headline_voices": 64, "iters": 50000 },
   "correctness": { "finite": true, "in_range": true, "nonzero": true },
@@ -21,8 +21,10 @@ The single source of truth for how a candidate is scored. Implemented in
 - **latency_us** — per-block render time at `headline_voices`, over `iters`
   blocks: mean and the tail (p99 / p99.9 / max). The tail is what kills DAWs.
 - **dropouts** — blocks that exceeded the budget (an xrun = an audible click).
-- **throughput** — largest tested voice count whose mean block fits under half
-  the budget (`max_voices_50pct`) and under the full budget (`max_voices_full`).
+- **throughput** — the exact largest voice count whose mean block fits under
+  half the budget (`max_voices_50pct`) and under the full budget
+  (`max_voices_full`), found by **binary search** (not a coarse power-of-two
+  sweep), so a small efficiency gain actually moves the number.
 
 ## Gates (any failure ⇒ fitness = 0)
 
@@ -34,14 +36,17 @@ The single source of truth for how a candidate is scored. Implemented in
 ## Fitness (when all gates pass)
 
 ```
-fitness = throughput.max_voices_50pct
+tail_ratio = clamp(latency_us.p99_9 / budget_us, 0, 1)   # budget_us = 5333.3
+fitness    = throughput.max_voices_50pct + (1 - tail_ratio)
 ```
 
-The most voices a core can sustain with headroom for the tail. Higher is better.
-`latency_us` and `max_voices_full` are recorded as secondary signals (useful for
-tie-breaking and for humans reading the leaderboard) but do not change fitness in
-v0. Keep this formula stable so scores stay comparable across the whole run; if
-it must change, bump the `schema` version and note it here.
+The integer voice ceiling is the headline and dominates the score. The sub-1
+tail term only ever breaks ties between engines of **equal** throughput,
+rewarding the one with the tighter p99.9 tail. So a real efficiency gain shows up
+as more voices; a same-throughput change that tightens the tail still scores
+higher. `max_voices_full` and the rest of `latency_us` are recorded as secondary
+signals for humans. Keep this formula stable so scores stay comparable across a
+run; if it must change, bump the `schema` version (now `v2`) and note it here.
 
 ## Why these and not others
 
