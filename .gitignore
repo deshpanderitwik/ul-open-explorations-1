@@ -6,6 +6,15 @@
 # Dependencies
 node_modules/
 
+# Rust build output (every candidate + the reference crate)
+target/
+**/target/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
 # OS / editor noise
 .DS_Store
 *.swp
