@@ -1,0 +1,28 @@
+{
+  "name": "render-basic",
+  "doc": "Three voices render to a non-silent block; state reports them.",
+  "tolerance": 0.02,
+  "commands": [
+    {"cmd": "load"},
+    {"cmd": "add_voice", "freq": 220.0},
+    {"cmd": "add_voice", "freq": 330.0},
+    {"cmd": "add_voice", "freq": 440.0},
+    {"cmd": "render", "blocks": 4, "id": 1},
+    {"cmd": "get_state", "id": 2},
+    {"cmd": "quit"}
+  ],
+  "expect": [
+    {"event": "ready"},
+    {"event": "ok"},
+    {"event": "ok"},
+    {"event": "ok"},
+    {"event": "ok"},
+    {"event": "meter", "voices": 3, "id": 1},
+    {"event": "state", "voices": 3, "sample_rate": 48000.0, "block_size": 256, "id": 2},
+    {"event": "bye"}
+  ],
+  "assert": [
+    {"path": "meter.peak", "min": 0.05},
+    {"path": "meter.rms", "min": 0.01}
+  ]
+}

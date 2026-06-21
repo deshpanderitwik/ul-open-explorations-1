@@ -1,10 +1,17 @@
 # The objective
 
-We are using an autonomous agent loop to **discover better audio-engine
-architectures** for a next-generation DAW. Agents propose engine
-implementations; an objective benchmark scores them; the best survive and get
-mutated again. This file is the fixed target every agent optimizes toward. It
-changes only by deliberate human decision — never by an agent.
+We are using an agent swarm to **build a complete DAW**, one component at a time,
+by climbing the capability ladder in [`ladder/`](./ladder/README.md). The swarm
+implements each rung against a contract, an objective evaluator scores it, and
+the winner is merged into the mainline `engine/`. The target is a headless,
+real-time-safe, fully-scriptable DAW engine driven entirely through the control
+protocol ([`protocol.md`](./protocol.md)) — mobile groovebox first, desktop next
+— that any UI can be built on top of.
+
+This file and everything under `spec/` and `evaluator/` are the fixed target and
+measuring stick. They change only by deliberate human decision — never by an
+agent. The single-number throughput goal below is **rung 1** of the ladder; later
+rungs add correctness-gated features (transport, mixer, sampler, sequencer, …).
 
 ## What "better" means, in one sentence
 

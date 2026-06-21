@@ -19,7 +19,7 @@ use std::hint::black_box;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Instant;
 
-use daw_candidate::Engine;
+use daw_engine::Synth;
 
 // ---- allocation tripwire ---------------------------------------------------
 // A global allocator that counts every allocation/reallocation process-wide.
@@ -53,8 +53,8 @@ const BUDGET_NS: f64 = (BLOCK as f64 / SAMPLE_RATE as f64) * 1e9; // 5.33 ms
 const LOWLAT_NS: f64 = (32.0 / SAMPLE_RATE as f64) * 1e9; // 0.67 ms low-latency
 const VOICE_CAP: usize = 1 << 16; // hard ceiling on the throughput search
 
-fn build(n: usize) -> Engine {
-    let mut e = Engine::new(SAMPLE_RATE, BLOCK);
+fn build(n: usize) -> Synth {
+    let mut e = Synth::new(SAMPLE_RATE, BLOCK);
     for v in 0..n {
         // A spread of detuned voices, like a fat chord — deterministic, not random.
         e.add_voice(110.0 + 6.5 * v as f32);

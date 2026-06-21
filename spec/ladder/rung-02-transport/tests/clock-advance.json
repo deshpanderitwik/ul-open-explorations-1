@@ -1,0 +1,28 @@
+{
+  "name": "clock-advance",
+  "doc": "Position advances by blocks*block_size only while playing; stop freezes it; tempo is reported.",
+  "tolerance": 0.001,
+  "commands": [
+    {"cmd": "load"},
+    {"cmd": "add_voice", "freq": 440.0},
+    {"cmd": "set_tempo", "bpm": 140.0},
+    {"cmd": "transport", "action": "play"},
+    {"cmd": "render", "blocks": 10, "id": 1},
+    {"cmd": "transport", "action": "stop"},
+    {"cmd": "render", "blocks": 5, "id": 2},
+    {"cmd": "get_state", "id": 3},
+    {"cmd": "quit"}
+  ],
+  "expect": [
+    {"event": "ready"},
+    {"event": "ok"},
+    {"event": "ok"},
+    {"event": "ok"},
+    {"event": "ok"},
+    {"event": "meter", "voices": 1, "id": 1},
+    {"event": "ok"},
+    {"event": "meter", "voices": 1, "id": 2},
+    {"event": "state", "tempo_bpm": 140.0, "playing": false, "position_samples": 2560, "voices": 1, "id": 3},
+    {"event": "bye"}
+  ]
+}

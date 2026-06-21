@@ -1,85 +1,90 @@
-# Autonomous DAW-architecture loop
+# Building a DAW with an agent swarm
 
-An agentic loop that evolves better **audio-engine architectures** for a
-next-generation DAW. A coding agent proposes an engine, an objective benchmark
-scores it, the best survive and get mutated again — `generate → evaluate →
-select`, repeated.
+An agent swarm that builds a complete DAW by climbing a **capability ladder** one
+rung at a time. Each rung is a component with a contract, an objective evaluator,
+and golden tests; winners are merged into one growing engine. Mobile groovebox
+first, desktop later. The engine is **headless** — every UI is a client of its
+JSON control protocol, so you build UI on top of a contract that's already proven
+by tests.
 
-The whole thing works because the *evaluation* is ground truth, not opinion: a
-candidate engine is judged by how many voices it can render per CPU core without
-missing the real-time deadline or breaking the real-time rules — and those
-numbers are produced by an evaluator-owned harness the agents cannot fake.
-
-## The loop
+## How it works
 
 ```
-        ┌───────────────────────────────────────────────┐
-        │                                               │
-   ┌────▼─────┐   ┌──────────┐   ┌──────────┐   ┌───────┴──────┐
-   │ GENERATE │──▶│  BUILD   │──▶│ BENCHMARK│──▶│   SELECT     │
-   │ (agent   │   │ (cargo   │   │ + GATE   │   │ best parent, │
-   │  edits   │   │  release)│   │ (score)  │   │ record run   │
-   │  engine) │   └──────────┘   └──────────┘   └──────────────┘
-   └──────────┘
+  Architect drafts the next rung ──▶ [you approve contract + tests]
+        ▼
+  Generators (parallel) implement it ──▶ Evaluator: golden gates + perf + regression
+        ▼                                        (rejects anything that fails a gate)
+  Select best ──▶ Integrator merges into engine/ ──▶ [you approve the merge]
+        ▼
+  rung done, next rung opens
 ```
+
+The keystone: there is **no single fitness for "a DAW."** So we don't evolve a
+DAW — we evolve components against contracts and **compound the winners**, with a
+regression suite as the ratchet that keeps progress from regressing.
 
 ## Layout
 
 ```
-spec/                 the fixed objective (human-owned — agents may not edit)
-  objective.md          what "better" means
-  constraints.md        the Engine API contract + real-time rules
-  metrics.md            exact measurements, gates, and the fitness formula
+spec/                 the fixed target (human-owned — agents may not edit)
+  objective.md          what we're building and why
+  protocol.md           the JSON command/event protocol (the engine/UI boundary)
+  profiles.md           mobile vs desktop budgets
+  metrics.md            the rung-1 perf fitness formula
+  constraints.md        the real-time rules
+  ladder/               the capability ladder: one folder per rung
+    rung-01-synth-core/    contract.md, budget.md, tests/   ✅ done
+    rung-02-transport/     ...                              ✅ done
+    rung-03-mixer/         ← next
+engine/               THE MAINLINE DAW (compounds; the single source of truth)
+  src/lib.rs            the Daw: dispatches protocol commands -> events
+  src/synth.rs          rung 1: polyphonic voice engine (gen-1 cubic poly-sine)
+  src/transport.rs      rung 2: sample-accurate clock
+  src/protocol.rs       command/event wire types
+  src/bin/headless.rs   the stdio protocol driver (what UIs/tests talk to)
 evaluator/            the ground-truth scorer (human-owned)
-  contract/bench.rs     canonical benchmark harness, injected into every candidate
-  score.py              build → run → gate → score → append to the archive
-candidates/           the engines under evolution
-  seed/                 candidate #0: a correct, real-time-safe, slow baseline
+  protocol_test.py      golden-test runner (correctness gates, any rung)
+  contract/bench.rs     canonical perf harness (alloc tripwire), injected at score time
+  score.py              perf benchmark: build -> run -> gate -> fitness
+  regression.py         the merge gate: golden + perf across ALL rungs
+candidates/           scratch clones of engine/ during evolution (gitignored)
 archive/              the program database (runs.jsonl) — the loop's memory
-orchestrator/         the loop driver
-  loop.py               generate → evaluate → select (Phase 1: single track)
-  prompts/generate.md   the brief each generation agent receives
+orchestrator/         the loop driver (generate -> evaluate -> select)
 reference/daw-lab/    the original learning-lab demos this grew out of (read-only)
-AGENTS.md             rules of the game for any agent in the loop
+AGENTS.md / SWARM.md  rules of the game + the swarm's roles and human gates
 ```
-
-## Why this can work (and how it avoids being gamed)
-
-- **The eval is objective.** Voices/core under a hard deadline is physics, not
-  taste. See `spec/metrics.md`.
-- **The harness is off-limits.** `evaluator/score.py` overwrites each candidate's
-  `bench.rs` with its own canonical copy before scoring and links against the
-  candidate's `Engine` API — so agents can rewrite the engine freely but can't
-  fabricate measurements or hide an allocation on the audio path.
-- **Allocation is a hard gate.** A counting global allocator in the harness fails
-  any candidate that allocates during `render` — the cardinal real-time sin.
-- **Memory across iterations.** Every run is appended to `archive/runs.jsonl`
-  with its lineage, so the loop builds on what worked.
 
 ## Run it
 
-Requires a Rust toolchain (`cargo`) and Python 3.10+.
+Requires `cargo` and Python 3.10+.
 
 ```sh
-# Score the baseline (builds the seed, benchmarks it, records to the archive):
-python evaluator/score.py candidates/seed
+# Drive the headless engine directly (what a UI does):
+printf '%s\n' '{"cmd":"load"}' '{"cmd":"add_voice","freq":440}' \
+  '{"cmd":"render","blocks":4}' '{"cmd":"get_state"}' '{"cmd":"quit"}' \
+  | ( cd engine && cargo run --release --bin headless )
 
-# Test the loop plumbing with no LLM call:
-python orchestrator/loop.py --iters 1 --dry-run
+# Run the regression gate (golden tests across all rungs + perf):
+python evaluator/regression.py
 
-# Run the real loop (shells out to headless Claude Code for the generate step):
-python orchestrator/loop.py --iters 5 --model sonnet
+# Generate + evaluate candidates against the mainline (LLM generate step):
+python orchestrator/loop.py --iters 3 --model sonnet
+python orchestrator/loop.py --iters 1 --dry-run     # test plumbing, no LLM
 ```
 
-Baseline seed (this machine, 4 cores): **0 allocations** on the render path,
-zero dropouts at 64 voices, fits **~1024 voices under half-budget**. That's the
-number the loop is trying to beat.
+## Status
 
-## Roadmap
+- **Rungs 1–2 integrated and green** in `engine/`: a real-time-safe polyphonic
+  synth (~2257 voices/core on the dev box, zero render-path allocations) and a
+  sample-accurate transport, both driven over the control protocol.
+- The evaluation stack is complete: golden correctness gates, the perf harness
+  with its allocation tripwire, and the regression ratchet.
+- **Next:** rung 3 (mixer) — multitrack gain/pan/sum, master bus, meters.
 
-- **Phase 0 — the rig** ✅ spec, evaluator, seed, archive, single-loop driver.
-- **Phase 1 — single loop** wire the generate step to a real agent and let it
-  iterate on the seed.
-- **Phase 2 — swarm** parallel workers in git worktrees, a population with
-  islands for diversity, graduate the driver to the Claude Agent SDK.
-- **Later** widen the workload: effects chains, multi-core graphs, real audio I/O.
+## The honest boundary
+
+The swarm can build a complete, correct, real-time-safe, fully-scriptable
+**headless DAW engine with a proven API** largely autonomously — all of that has
+objective signals. It cannot judge UX taste. So the deliverable is engine + API +
+reference UI; you own product and UX decisions on top. That division is exactly
+what "build UI on top of it" means.

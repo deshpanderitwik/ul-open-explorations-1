@@ -36,38 +36,25 @@ import subprocess
 import sys
 
 REPO = pathlib.Path(__file__).resolve().parent.parent
+MAINLINE = REPO / "engine"          # the single source of truth; candidates clone this
 CANDIDATES = REPO / "candidates"
 ARCHIVE = REPO / "archive" / "runs.jsonl"
-SCORE = REPO / "evaluator" / "score.py"
+REGRESSION = REPO / "evaluator" / "regression.py"
 PROMPT_TEMPLATE = REPO / "orchestrator" / "prompts" / "generate.md"
-
-
-def best_parent() -> str:
-    """Pick the highest-fitness candidate recorded so far; default to the seed."""
-    best_id, best_fit = "seed", float("-inf")
-    if ARCHIVE.exists():
-        for line in ARCHIVE.read_text().splitlines():
-            if not line.strip():
-                continue
-            rec = json.loads(line)
-            if rec.get("fitness", 0) > best_fit:
-                best_id, best_fit = rec["id"], rec["fitness"]
-    return best_id
 
 
 def new_candidate_id() -> str:
     return "gen-" + _dt.datetime.now().strftime("%Y%m%d-%H%M%S")
 
 
-def build_prompt(parent_id: str) -> str:
-    """Fill the generation prompt with the parent's latest metrics, if any."""
+def build_prompt() -> str:
+    """Fill the generation prompt with the mainline's latest recorded metrics."""
     template = PROMPT_TEMPLATE.read_text()
-    metrics_blurb = "(no prior metrics — this is the seed baseline)"
+    metrics_blurb = "(no prior metrics recorded)"
     if ARCHIVE.exists():
         for line in reversed(ARCHIVE.read_text().splitlines()):
-            if line.strip() and json.loads(line)["id"] == parent_id:
-                rec = json.loads(line)
-                metrics_blurb = json.dumps(rec.get("metrics", {}), indent=2)
+            if line.strip():
+                metrics_blurb = json.dumps(json.loads(line).get("metrics", {}), indent=2)
                 break
     return template.replace("{{PARENT_METRICS}}", metrics_blurb)
 
@@ -91,37 +78,37 @@ def generate(candidate_dir: pathlib.Path, prompt: str, model: str, dry_run: bool
     subprocess.run(cmd, cwd=candidate_dir, check=True)
 
 
-def evaluate(candidate_dir: pathlib.Path, parent_id: str) -> dict:
+def evaluate(candidate_dir: pathlib.Path) -> bool:
+    """Run the full regression gate (golden + perf) on a candidate."""
     out = subprocess.run(
-        [sys.executable, str(SCORE), str(candidate_dir), "--parent", parent_id],
-        capture_output=True, text=True,
+        [sys.executable, str(REGRESSION), "--candidate", str(candidate_dir.relative_to(REPO))],
+        text=True,
     )
-    sys.stderr.write(out.stderr)
-    return json.loads(out.stdout.splitlines()[-1]) if out.stdout.strip() else {"fitness": 0}
+    return out.returncode == 0
 
 
 def main() -> None:
-    ap = argparse.ArgumentParser(description="Run the DAW-architecture agent loop.")
+    ap = argparse.ArgumentParser(description="Generate + evaluate candidates against the mainline.")
     ap.add_argument("--iters", type=int, default=1, help="how many candidates to generate")
     ap.add_argument("--model", default="sonnet", help="model for the generate step")
     ap.add_argument("--dry-run", action="store_true", help="skip the LLM call (test plumbing)")
     args = ap.parse_args()
 
     for i in range(args.iters):
-        parent = best_parent()
         cid = new_candidate_id()
         dst = CANDIDATES / cid
-        print(f"\n=== iteration {i + 1}/{args.iters}: {cid}  (parent: {parent}) ===")
+        print(f"\n=== iteration {i + 1}/{args.iters}: {cid}  (from mainline engine/) ===")
 
-        # SELECT + clone the parent as the starting point.
-        shutil.copytree(CANDIDATES / parent, dst, ignore=shutil.ignore_patterns("target"))
+        # SELECT + clone the mainline as the starting point.
+        shutil.copytree(MAINLINE, dst, ignore=shutil.ignore_patterns("target"))
 
         # GENERATE.
-        generate(dst, build_prompt(parent), args.model, args.dry_run)
+        generate(dst, build_prompt(), args.model, args.dry_run)
 
-        # EVALUATE (records to the archive).
-        result = evaluate(dst, parent)
-        print(f"  -> fitness={result.get('fitness'):g}  ({result.get('reason')})")
+        # EVALUATE: full regression gate. A passing candidate is a merge candidate
+        # (integration into engine/ is a separate, human-approved step).
+        passed = evaluate(dst)
+        print(f"  -> regression {'PASS (merge candidate)' if passed else 'FAIL (rejected)'}")
 
 
 if __name__ == "__main__":
