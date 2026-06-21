@@ -6,6 +6,19 @@
 # Dependencies
 node_modules/
 
+# Rust build output (every candidate + the reference crate)
+target/
+**/target/
+
+# Generated candidate crates are experiment scratch — only the seed (and any
+# promoted winner) is tracked. The run history lives in archive/runs.jsonl.
+candidates/gen-*
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
 # OS / editor noise
 .DS_Store
 *.swp

@@ -1,0 +1,20 @@
+{
+  "name": "seek",
+  "doc": "Seek sets position immediately while stopped; tempo is reported.",
+  "tolerance": 0.001,
+  "commands": [
+    {"cmd": "load"},
+    {"cmd": "set_tempo", "bpm": 120.0},
+    {"cmd": "transport", "action": "seek", "pos": 1000},
+    {"cmd": "get_state", "id": 1},
+    {"cmd": "quit"}
+  ],
+  "expect": [
+    {"event": "ready"},
+    {"event": "ok"},
+    {"event": "ok"},
+    {"event": "ok"},
+    {"event": "state", "tempo_bpm": 120.0, "playing": false, "position_samples": 1000, "voices": 0, "id": 1},
+    {"event": "bye"}
+  ]
+}
