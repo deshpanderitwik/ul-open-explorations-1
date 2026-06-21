@@ -8,8 +8,8 @@ The earlier work — an interactive web tutorial on audio-analysis features plus
 the `daw-lab/` Rust audio-engine demos and `sketches/` explainers — has been
 preserved in git history. Nothing was deleted permanently:
 
-- **Branch:** `archive/audio-explorations`
-- **Tag:** `archive/2026-06-21`
+- **Branch:** `archive/audio-explorations` (on the remote — the authoritative archive)
+- **Tag:** `archive/2026-06-21` (local snapshot; push manually if you want it on the remote)
 
 To browse or restore it:
 
