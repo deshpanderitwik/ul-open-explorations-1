@@ -58,6 +58,21 @@ reference/daw-lab/    the original learning-lab demos this grew out of (read-onl
 AGENTS.md / SWARM.md  rules of the game + the swarm's roles and human gates
 DEPLOYMENT.md         how the DAW reaches your iPhone as it evolves
 CADENCE.md            the rhythm: iterate hourly, integrate per rung, deploy per milestone
+dashboard/            static web dashboard (GitHub Pages) — track results between builds
+```
+
+## Dashboard
+
+A static dashboard published to **GitHub Pages** lets you watch progress without
+reading code: the current champion's numbers, the ladder, fitness over builds,
+recent runs, and recent activity. It's regenerated from the repo's own records
+(`archive/runs.jsonl`, `spec/ladder/ladder.json`, git log) on every push to main
+by `.github/workflows/pages.yml`. One-time setup: repo **Settings → Pages →
+Source: GitHub Actions**. Preview locally:
+
+```sh
+python dashboard/build.py && (cd dashboard/public && python -m http.server 8765)
+# open http://localhost:8765
 ```
 
 ## Getting it on your iPhone
