@@ -1,0 +1,20 @@
+{
+  "expo": {
+    "name": "DAW Groovebox",
+    "slug": "daw-groovebox",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "ios": {
+      "bundleIdentifier": "com.example.dawgroovebox",
+      "supportsTablet": true,
+      "infoPlist": {
+        "UIBackgroundModes": ["audio"]
+      }
+    },
+    "android": {
+      "package": "com.example.dawgroovebox"
+    }
+  }
+}

@@ -50,9 +50,23 @@ evaluator/            the ground-truth scorer (human-owned)
 candidates/           scratch clones of engine/ during evolution (gitignored)
 archive/              the program database (runs.jsonl) — the loop's memory
 orchestrator/         the loop driver (generate -> evaluate -> select)
+mobile/               Expo / React Native app — a CLIENT of the control protocol
+  protocol/             transport-agnostic TypeScript protocol client
+  tools/smoke.ts        drives the real engine over the protocol (CI gate)
+.github/workflows/    CI: protocol smoke test + EAS build -> TestFlight
 reference/daw-lab/    the original learning-lab demos this grew out of (read-only)
 AGENTS.md / SWARM.md  rules of the game + the swarm's roles and human gates
+DEPLOYMENT.md         how the DAW reaches your iPhone as it evolves
 ```
+
+## Getting it on your iPhone
+
+The app is an Expo / React Native client of the engine's protocol. The macOS
+build runs on EAS's cloud (no local Mac needed in CI); each merge that touches
+the engine builds and ships to TestFlight automatically. The one caveat:
+over-the-air updates carry UI changes instantly, but engine (native Rust) rungs
+need a new build — automated, a few minutes per rung. Full setup and the
+optional instant-engine-OTA path are in [`DEPLOYMENT.md`](./DEPLOYMENT.md).
 
 ## Run it
 
