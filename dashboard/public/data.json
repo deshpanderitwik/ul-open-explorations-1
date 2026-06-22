@@ -1,0 +1,238 @@
+{
+  "generatedAt": "2026-06-22T21:43:02.925104+00:00",
+  "summit": "Mobile groovebox",
+  "champion": {
+    "id": "engine",
+    "parent": "mainline",
+    "ts": "2026-06-21T22:13:48.527452+00:00",
+    "fitness": 2257.979,
+    "reason": "ok",
+    "voices_50pct": 2257,
+    "voices_full": 4596,
+    "mean_us": 73.183,
+    "p99_9_us": 114.653,
+    "alloc": 0,
+    "dropouts": 0
+  },
+  "runs": [
+    {
+      "id": "engine",
+      "parent": "mainline",
+      "ts": "2026-06-21T22:13:48.527452+00:00",
+      "fitness": 2257.979,
+      "reason": "ok",
+      "voices_50pct": 2257,
+      "voices_full": 4596,
+      "mean_us": 73.183,
+      "p99_9_us": 114.653,
+      "alloc": 0,
+      "dropouts": 0
+    }
+  ],
+  "ladder": {
+    "summit": "Mobile groovebox",
+    "rungs": [
+      {
+        "n": 1,
+        "title": "Synth / voice core",
+        "status": "done",
+        "summary": "Polyphonic real-time-safe voice engine + throughput."
+      },
+      {
+        "n": 2,
+        "title": "Transport & clock",
+        "status": "done",
+        "summary": "Sample-accurate tempo / play / stop / seek / position."
+      },
+      {
+        "n": 3,
+        "title": "Mixer",
+        "status": "next",
+        "summary": "Multitrack gain/pan/sum, master bus, meters."
+      },
+      {
+        "n": 4,
+        "title": "Sample playback",
+        "status": "todo",
+        "summary": "Load PCM, one-shot + looped sample voices."
+      },
+      {
+        "n": 5,
+        "title": "Step sequencer",
+        "status": "todo",
+        "summary": "Pattern grid firing samples on the clock."
+      },
+      {
+        "n": 6,
+        "title": "Effects chain",
+        "status": "todo",
+        "summary": "Insert-node interface + gain/filter/delay."
+      },
+      {
+        "n": 7,
+        "title": "Record & quantize",
+        "status": "todo",
+        "summary": "Capture taps into pattern steps on the grid."
+      },
+      {
+        "n": 8,
+        "title": "Persistence",
+        "status": "todo",
+        "summary": "Save / load project (patterns, mixer, samples)."
+      },
+      {
+        "n": 9,
+        "title": "Real audio I/O",
+        "status": "todo",
+        "summary": "Leave the simulator: device audio backend."
+      },
+      {
+        "n": 10,
+        "title": "Protocol complete",
+        "status": "todo",
+        "summary": "Full groovebox drivable over the control protocol."
+      }
+    ],
+    "milestones": [
+      {
+        "tag": "milestone-groovebox-playback",
+        "after": [
+          3,
+          4
+        ],
+        "experience": "Load a sound, hear it on a track."
+      },
+      {
+        "tag": "milestone-groovebox-beat",
+        "after": [
+          5
+        ],
+        "experience": "Program a beat."
+      },
+      {
+        "tag": "milestone-groovebox-instrument",
+        "after": [
+          6,
+          7
+        ],
+        "experience": "It feels like an instrument."
+      },
+      {
+        "tag": "milestone-groovebox-live",
+        "after": [
+          9
+        ],
+        "experience": "It plays through the phone's speakers."
+      }
+    ]
+  },
+  "commits": [
+    {
+      "hash": "7c92049",
+      "subject": "Pages: self-enable, no manual setup (#15)",
+      "date": "2026-06-22T14:07:18-07:00"
+    },
+    {
+      "hash": "afc3bb9",
+      "subject": "Web dashboard on GitHub Pages \u2014 track results between builds (#14)",
+      "date": "2026-06-22T14:01:20-07:00"
+    },
+    {
+      "hash": "3385576",
+      "subject": "Deployment cadence: auto-merge on green, milestone-gated TestFlight (#13)",
+      "date": "2026-06-22T09:05:24-07:00"
+    },
+    {
+      "hash": "76e6b8c",
+      "subject": "Mobile delivery: Expo groovebox client + EAS/TestFlight pipeline (#12)",
+      "date": "2026-06-22T08:58:18-07:00"
+    },
+    {
+      "hash": "cea412b",
+      "subject": "Swarm-builds-a-DAW infrastructure: ladder, mainline engine, evaluation stack (#11)",
+      "date": "2026-06-21T15:56:40-07:00"
+    },
+    {
+      "hash": "5c891dc",
+      "subject": "Clarify archive references in fresh-start README",
+      "date": "2026-06-21T20:51:20+00:00"
+    },
+    {
+      "hash": "805fe6d",
+      "subject": "Reset repo to fresh start; archive prior audio-explorations work",
+      "date": "2026-06-21T20:50:53+00:00"
+    },
+    {
+      "hash": "528a3e7",
+      "subject": "sketches: gloss the inline Rust syntax in the code samples",
+      "date": "2026-06-19T00:18:58+00:00"
+    },
+    {
+      "hash": "335dd74",
+      "subject": "sketches: expand the banned-ops list into a plain-English glossary",
+      "date": "2026-06-19T00:16:18+00:00"
+    },
+    {
+      "hash": "72fe958",
+      "subject": "sketches: add 'Guarding the audio thread' \u2014 preventing forbidden operations",
+      "date": "2026-06-18T23:49:24+00:00"
+    },
+    {
+      "hash": "32181fa",
+      "subject": "sketches: sharpen the Experiment 3 framing on 'why the average lies'",
+      "date": "2026-06-18T23:44:18+00:00"
+    },
+    {
+      "hash": "8a4a7cd",
+      "subject": "sketches: add 'Seeing the graph' \u2014 interactive signal-graph visualizer",
+      "date": "2026-06-18T23:34:32+00:00"
+    },
+    {
+      "hash": "3c441d4",
+      "subject": "sketches: re-ground the Experiment 3 page in the technical foundation (#4)",
+      "date": "2026-06-18T16:16:07-07:00"
+    },
+    {
+      "hash": "481123a",
+      "subject": "sketches: re-ground 'Why the average lies' in the technical foundation",
+      "date": "2026-06-18T23:14:56+00:00"
+    },
+    {
+      "hash": "9a195d7",
+      "subject": "sketches: 'Why the average lies' \u2014 Experiment 3 deep-dive microsite (#3)",
+      "date": "2026-06-17T12:53:19-07:00"
+    },
+    {
+      "hash": "5ba9d6a",
+      "subject": "sketches: add 'Why the average lies' \u2014 Experiment 3 deep-dive microsite",
+      "date": "2026-06-17T19:53:00+00:00"
+    },
+    {
+      "hash": "f54bd02",
+      "subject": "daw-lab: Experiment 3 \u2014 the worst-case rig (tail latency, the choke, why no alloc)",
+      "date": "2026-06-17T19:04:39+00:00"
+    },
+    {
+      "hash": "877fe33",
+      "subject": "sketches: expand the Experiment 2 narrative in the microsite (#2)",
+      "date": "2026-06-17T11:53:33-07:00"
+    },
+    {
+      "hash": "cc9e0a1",
+      "subject": "sketches: expand Experiment 2 narrative in the engine-so-far microsite",
+      "date": "2026-06-17T18:53:13+00:00"
+    },
+    {
+      "hash": "36f14e3",
+      "subject": "sketches: add 'The engine so far' \u2014 interactive microsite for the daw-lab journey",
+      "date": "2026-06-17T15:34:26+00:00"
+    }
+  ],
+  "stats": {
+    "total_runs": 1,
+    "passed": 1,
+    "rejected": 0,
+    "rungs_done": 2,
+    "rungs_total": 10
+  }
+}
