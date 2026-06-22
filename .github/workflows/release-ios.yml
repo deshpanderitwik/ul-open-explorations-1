@@ -1,0 +1,37 @@
+name: release-ios
+
+# Milestone-gated deploy. Does NOT fire on every merge — only when YOU decide a
+# cluster of rungs is worth feeling on the phone, by pushing a milestone tag:
+#
+#     git tag milestone-groovebox-sampler -m "load a sound, hear it on a track"
+#     git push origin milestone-groovebox-sampler
+#
+# That triggers an EAS build on Expo's macOS cloud (no local Mac needed) and
+# auto-submits to TestFlight. Requires the EXPO_TOKEN secret and Apple creds
+# configured in EAS / eas.json (see DEPLOYMENT.md). Also runnable on demand from
+# the Actions tab (workflow_dispatch).
+
+on:
+  push:
+    tags:
+      - "milestone-*"
+  workflow_dispatch:
+
+jobs:
+  testflight:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install EAS CLI
+        run: npm install -g eas-cli
+      - name: Install app deps
+        run: npm ci
+        working-directory: mobile
+      - name: Build on EAS (macOS cloud) and submit to TestFlight
+        run: eas build --platform ios --profile production --non-interactive --auto-submit
+        working-directory: mobile
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}

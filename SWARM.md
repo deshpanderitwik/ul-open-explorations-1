@@ -31,19 +31,27 @@ of progress is **one rung**. Within a rung the swarm runs a `generate → evalua
   Select best passing candidate
         │
         ▼
-  Integrator merges into engine/  ──▶  [YOU APPROVE the merge]
+  CI gate green? ──▶ auto-merge into engine/ (rung N done; rung N+1 opens)
         │
         ▼
-  Rung N done; archive updated; rung N+1 opens
+  ...rungs accumulate... ──▶ [YOU push a milestone tag] ──▶ TestFlight
 ```
 
 ## Human gates (the two you own)
 
+The cadence is **auto-merge on green, review at milestones** (see `CADENCE.md`).
+Your attention lands at exactly two points:
+
 1. **Contract approval** — before generation, you sign off on what the rung adds
    (the API/protocol surface and its tests). This is where you steer the DAW.
-2. **Merge approval** — before a winner lands in `engine/`, you approve the diff.
+2. **Milestone review + deploy** — rungs that pass the full CI gate
+   (`evaluator/regression.py` + the mobile smoke test) auto-merge to `main`. You
+   review when a *cluster* of rungs is worth feeling on the phone, and push a
+   `milestone-*` tag to ship it to TestFlight.
 
-Everything between those gates is automatic and objective.
+Everything between those gates is automatic and objective — the CI gate is the
+arbiter of "green," so nothing merges that fails a correctness, real-time-safety,
+or regression check.
 
 ## Guardrails (always on)
 
