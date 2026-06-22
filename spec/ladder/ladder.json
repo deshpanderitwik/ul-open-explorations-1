@@ -1,0 +1,21 @@
+{
+  "summit": "Mobile groovebox",
+  "rungs": [
+    { "n": 1,  "title": "Synth / voice core",   "status": "done", "summary": "Polyphonic real-time-safe voice engine + throughput." },
+    { "n": 2,  "title": "Transport & clock",     "status": "done", "summary": "Sample-accurate tempo / play / stop / seek / position." },
+    { "n": 3,  "title": "Mixer",                 "status": "next", "summary": "Multitrack gain/pan/sum, master bus, meters." },
+    { "n": 4,  "title": "Sample playback",       "status": "todo", "summary": "Load PCM, one-shot + looped sample voices." },
+    { "n": 5,  "title": "Step sequencer",        "status": "todo", "summary": "Pattern grid firing samples on the clock." },
+    { "n": 6,  "title": "Effects chain",         "status": "todo", "summary": "Insert-node interface + gain/filter/delay." },
+    { "n": 7,  "title": "Record & quantize",     "status": "todo", "summary": "Capture taps into pattern steps on the grid." },
+    { "n": 8,  "title": "Persistence",           "status": "todo", "summary": "Save / load project (patterns, mixer, samples)." },
+    { "n": 9,  "title": "Real audio I/O",        "status": "todo", "summary": "Leave the simulator: device audio backend." },
+    { "n": 10, "title": "Protocol complete",     "status": "todo", "summary": "Full groovebox drivable over the control protocol." }
+  ],
+  "milestones": [
+    { "tag": "milestone-groovebox-playback",   "after": [3, 4],    "experience": "Load a sound, hear it on a track." },
+    { "tag": "milestone-groovebox-beat",       "after": [5],       "experience": "Program a beat." },
+    { "tag": "milestone-groovebox-instrument", "after": [6, 7],    "experience": "It feels like an instrument." },
+    { "tag": "milestone-groovebox-live",       "after": [9],       "experience": "It plays through the phone's speakers." }
+  ]
+}

@@ -1,0 +1,49 @@
+name: pages
+
+# Publishes the dashboard (dashboard/public) to GitHub Pages on every push to
+# main. Regenerates data.json from the repo's own records first, so the dashboard
+# always reflects the latest archive, ladder, and commits — i.e. the results
+# between builds. One-time setup: in repo Settings -> Pages, set Source to
+# "GitHub Actions". The site URL then appears in this workflow's deploy step.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Permissions required by the official Pages deploy actions.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Allow one concurrent deployment; newer pushes cancel in-progress ones.
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 30   # so build.py can list recent commits
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Generate dashboard data
+        run: python dashboard/build.py
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dashboard/public
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
