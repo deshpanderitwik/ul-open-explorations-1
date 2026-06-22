@@ -14,10 +14,6 @@ target/
 # promoted winner) is tracked. The run history lives in archive/runs.jsonl.
 candidates/gen-*
 
-# Dashboard data is generated from the repo's records by dashboard/build.py
-# (regenerated in CI before each Pages deploy) — not tracked.
-dashboard/public/data.json
-
 # Python
 __pycache__/
 *.pyc
