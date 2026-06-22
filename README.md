@@ -57,6 +57,7 @@ mobile/               Expo / React Native app — a CLIENT of the control protoc
 reference/daw-lab/    the original learning-lab demos this grew out of (read-only)
 AGENTS.md / SWARM.md  rules of the game + the swarm's roles and human gates
 DEPLOYMENT.md         how the DAW reaches your iPhone as it evolves
+CADENCE.md            the rhythm: iterate hourly, integrate per rung, deploy per milestone
 ```
 
 ## Getting it on your iPhone

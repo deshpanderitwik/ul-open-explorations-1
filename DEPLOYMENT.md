@@ -5,25 +5,24 @@ reaches your iPhone with as little manual work as possible. This documents the
 Expo / React Native path you chose, what's automated, and the one unavoidable
 caveat about native code.
 
-## The shape of it
+## The shape of it (three speeds — see CADENCE.md)
 
 ```
-  swarm merges a rung into engine/  (native Rust)
-            │
-            ▼
-  GitHub Actions (Linux)  ── protocol-smoke: build engine + run TS client test
-            │  (green)
-            ▼
-  eas build  ─────────────▶  EAS macOS cloud builder
-            │                   • cross-compiles the Rust engine for iOS
-            │                   • builds + signs the Expo app
-            ▼
-  TestFlight  ────────────▶  your iPhone gets an "Update" notification
+  swarm builds a rung ──▶ ci.yml gate (regression + smoke) ──▶ auto-merge on green
+            │                                                         │
+            │  (engine accumulates rungs on main, no deploy yet)      │
+            ▼                                                         ▼
+  YOU push a milestone tag  ──▶  release-ios.yml  ──▶  EAS macOS cloud builder
+     git push origin milestone-*       │                 • cross-compiles Rust for iOS
+                                       │                 • builds + signs the Expo app
+                                       ▼
+  TestFlight  ───────────────────────────────────▶  your iPhone gets an "Update"
 ```
 
-You own a Mac + Apple Developer account, but note: **the macOS build runs on
-EAS's cloud, not your Mac.** So the pipeline is hands-off — you don't have to
-open Xcode for each rung.
+Deploys are **milestone-gated**, not per-merge: rungs auto-merge to `main` when
+CI is green, but a TestFlight build fires only when *you* push a `milestone-*`
+tag. You own a Mac + Apple Developer account, but note: **the macOS build runs on
+EAS's cloud, not your Mac** — so even milestone builds never need Xcode open.
 
 ## The one caveat to internalize (native vs OTA)
 
@@ -61,8 +60,13 @@ few minutes per build. If you later want **instant** engine updates too, see
    group so new builds are available to your device immediately (internal testing
    skips Beta App Review).
 
-After that, every merge to `main` that touches `engine/` or `mobile/` builds and
-ships to TestFlight automatically.
+After that, pushing a `milestone-*` tag builds and ships to TestFlight
+automatically (rungs merge continuously on green; only milestones deploy):
+
+```sh
+git tag milestone-groovebox-sampler -m "load a sound, hear it on a track"
+git push origin milestone-groovebox-sampler
+```
 
 ## Day-to-day loops
 
