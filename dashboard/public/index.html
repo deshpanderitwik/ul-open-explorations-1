@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="color-scheme" content="dark" />
+  <meta name="description" content="Live dashboard for an AI swarm building a DAW." />
+  <title>DAW Swarm</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="app">
+    <header class="site-header">
+      <div class="header-main">
+        <div class="brand">
+          <span class="brand-mark" aria-hidden="true"></span>
+          <div class="brand-text">
+            <h1>DAW Swarm</h1>
+            <p class="summit" id="summit">&mdash;</p>
+          </div>
+        </div>
+        <div class="updated" id="updated" title="">updating&hellip;</div>
+      </div>
+      <p class="tagline">An AI swarm builds a digital audio workstation, one rung at a time.</p>
+    </header>
+
+    <main id="content">
+      <div class="loading">Loading dashboard&hellip;</div>
+    </main>
+
+    <footer class="site-footer">
+      <span>Static dashboard &middot; auto-refreshes every 30s</span>
+    </footer>
+  </div>
+
+  <script src="app.js" defer></script>
+</body>
+</html>
