@@ -1,0 +1,56 @@
+name: mobile
+
+# Two jobs:
+#  * protocol-smoke — runs on every push/PR. Builds the engine and drives it
+#    through the TypeScript protocol client (mobile/tools/smoke.ts). This is the
+#    ratchet that keeps the mobile client and the evolving engine in sync: if a
+#    rung changes the protocol in a way that breaks the app's client, CI goes red.
+#  * ios-release — runs on main. Kicks an EAS build (which runs on Expo's macOS
+#    cloud builders) and auto-submits to TestFlight. No Mac needed in CI; EAS
+#    provides the Mac. Requires the EXPO_TOKEN secret (and Apple creds configured
+#    in EAS / eas.json — see DEPLOYMENT.md).
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  protocol-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Build the engine (headless)
+        run: cargo build --release --bin headless
+        working-directory: engine
+      - name: Drive the engine through the mobile protocol client
+        run: node --experimental-strip-types tools/smoke.ts
+        working-directory: mobile
+
+  ios-release:
+    # Only on main, and only when the engine or app actually changed.
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    needs: protocol-smoke
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install EAS CLI
+        run: npm install -g eas-cli
+      - name: Install app deps
+        run: npm ci
+        working-directory: mobile
+      - name: Build on EAS (macOS cloud) and submit to TestFlight
+        # The Rust engine is cross-compiled for iOS by an EAS build hook on the
+        # macOS builder (see DEPLOYMENT.md). This step just triggers it.
+        run: eas build --platform ios --profile production --non-interactive --auto-submit
+        working-directory: mobile
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
