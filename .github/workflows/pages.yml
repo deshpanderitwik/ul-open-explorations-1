@@ -3,8 +3,11 @@ name: pages
 # Publishes the dashboard (dashboard/public) to GitHub Pages on every push to
 # main. Regenerates data.json from the repo's own records first, so the dashboard
 # always reflects the latest archive, ladder, and commits — i.e. the results
-# between builds. One-time setup: in repo Settings -> Pages, set Source to
-# "GitHub Actions". The site URL then appears in this workflow's deploy step.
+# between builds. No manual setup: the `configure-pages` step below enables Pages
+# itself on first run (enablement: true) using the workflow token, so you never
+# have to visit repo Settings. The live URL appears on the deploy job. (Falls
+# back to the manual Settings -> Pages -> Source: GitHub Actions toggle only if
+# org/repo policy forbids the token from managing Pages.)
 
 on:
   push:
@@ -34,6 +37,10 @@ jobs:
           python-version: "3.11"
       - name: Generate dashboard data
         run: python dashboard/build.py
+      - name: Enable + configure GitHub Pages (no manual setup needed)
+        uses: actions/configure-pages@v5
+        with:
+          enablement: true
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dashboard/public
