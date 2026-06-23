@@ -21,12 +21,41 @@ from __future__ import annotations
 import datetime as dt
 import json
 import pathlib
+import re
 import subprocess
 
 REPO = pathlib.Path(__file__).resolve().parent.parent
 ARCHIVE = REPO / "archive" / "runs.jsonl"
 LADDER = REPO / "spec" / "ladder" / "ladder.json"
+ENGINE_SRC = REPO / "engine" / "src"
+PROTOCOL_RS = ENGINE_SRC / "protocol.rs"
 OUT = REPO / "dashboard" / "public" / "data.json"
+
+# What each part of the repo is, in one line. The Codebase tab renders these;
+# the facts beside them (file list, line counts, protocol surface) are read live
+# from the source so the tab can't drift as rungs land.
+REPO_MAP = [
+    {"path": "engine/",        "desc": "The compounding Rust audio engine. Every merged rung lives here — one growing library."},
+    {"path": "spec/ladder/",   "desc": "The capability ladder: one folder per rung (contract, budget, golden tests)."},
+    {"path": "evaluator/",     "desc": "The ground-truth judge — golden-test runner + perf scorer. The swarm may not touch it."},
+    {"path": "archive/runs.jsonl", "desc": "Immutable, append-only record of every scored build — the program's memory."},
+    {"path": "dashboard/",     "desc": "This static microsite, generated from the repo's own records on every push."},
+    {"path": ".github/workflows/", "desc": "CI: the regression gate on every PR, and the job that publishes this dashboard."},
+]
+
+# Per-module one-liners, keyed by path under engine/src. Files without an entry
+# still appear (with line counts) — only the description falls back to blank.
+MODULE_DESC = {
+    "lib.rs":         "The Daw facade: owns mixer + transport + sample bank, turns protocol commands into events.",
+    "synth.rs":       "Polyphonic sine-voice bank — the real-time DSP core that the perf harness benchmarks. (rung 1)",
+    "transport.rs":   "Sample-accurate clock: tempo, play/stop, seek, position. (rung 2)",
+    "mixer.rs":       "Multitrack mixer: per-track gain + equal-power pan, master bus, stereo metering. (rung 3)",
+    "samples.rs":     "Sample playback: named PCM buffers, one-shot / looped sample voices. (rung 4)",
+    "protocol.rs":    "The JSON control protocol — the Command and Event wire types (serde-tagged NDJSON).",
+    "bin/headless.rs":"The engine binary: reads commands on stdin, writes events on stdout — what the tests drive.",
+    "bin/bench.rs":   "The canonical perf harness, injected by the evaluator so throughput numbers can't be faked.",
+}
+
 
 
 def _f(d: dict, *path, default=None):
@@ -77,6 +106,57 @@ def pick_champion(runs: list[dict]) -> dict | None:
     return passed[-1] if passed else None  # runs are in chronological order
 
 
+def _snake(name: str) -> str:
+    """PascalCase variant -> serde's snake_case wire name (LoadSample -> load_sample)."""
+    return re.sub(r"(?<!^)(?=[A-Z])", "_", name).lower()
+
+
+def _enum_variants(src: str, enum_name: str) -> list[str]:
+    """The wire names of an enum's variants, in declaration order.
+
+    Variants are indented exactly four spaces; fields/attributes are deeper or
+    start with '#'. Handles both `Variant { .. }` and bare `Variant,` (e.g. Bye).
+    """
+    m = re.search(r"pub enum " + re.escape(enum_name) + r"\s*\{", src)
+    if not m:
+        return []
+    names = []
+    for line in src[m.end():].splitlines():
+        if line.startswith("}"):  # end of the enum block
+            break
+        vm = re.match(r" {4}([A-Z][A-Za-z0-9]*)\b", line)
+        if vm:
+            names.append(_snake(vm.group(1)))
+    return names
+
+
+def engine_modules() -> tuple[list[dict], int]:
+    """Every .rs file under engine/src with its line count and one-liner."""
+    mods = []
+    total = 0
+    for p in sorted(ENGINE_SRC.rglob("*.rs")):
+        rel = p.relative_to(ENGINE_SRC).as_posix()
+        loc = len(p.read_text().splitlines())
+        total += loc
+        mods.append({"file": rel, "loc": loc, "desc": MODULE_DESC.get(rel, "")})
+    return mods, total
+
+
+def codebase() -> dict:
+    """The structured facts the Codebase tab renders — read live from source."""
+    mods, total_loc = engine_modules()
+    proto_src = PROTOCOL_RS.read_text() if PROTOCOL_RS.exists() else ""
+    return {
+        "repo_map": REPO_MAP,
+        "modules": mods,
+        "engine_loc": total_loc,
+        "protocol": {
+            "commands": _enum_variants(proto_src, "Command"),
+            "events": _enum_variants(proto_src, "Event"),
+        },
+    }
+
+
 def recent_commits(n: int = 20) -> list[dict]:
     try:
         out = subprocess.run(
@@ -108,6 +188,7 @@ def main() -> None:
         "champion": champ,
         "runs": runs,
         "ladder": ladder,
+        "codebase": codebase(),
         "commits": recent_commits(),
         "stats": {
             "total_runs": len(runs),

@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-23T16:02:21.432825+00:00",
+  "generatedAt": "2026-06-23T17:18:22.401013+00:00",
   "summit": "Mobile groovebox",
   "champion": {
     "id": "engine",
@@ -152,11 +152,110 @@
       }
     ]
   },
+  "codebase": {
+    "repo_map": [
+      {
+        "path": "engine/",
+        "desc": "The compounding Rust audio engine. Every merged rung lives here \u2014 one growing library."
+      },
+      {
+        "path": "spec/ladder/",
+        "desc": "The capability ladder: one folder per rung (contract, budget, golden tests)."
+      },
+      {
+        "path": "evaluator/",
+        "desc": "The ground-truth judge \u2014 golden-test runner + perf scorer. The swarm may not touch it."
+      },
+      {
+        "path": "archive/runs.jsonl",
+        "desc": "Immutable, append-only record of every scored build \u2014 the program's memory."
+      },
+      {
+        "path": "dashboard/",
+        "desc": "This static microsite, generated from the repo's own records on every push."
+      },
+      {
+        "path": ".github/workflows/",
+        "desc": "CI: the regression gate on every PR, and the job that publishes this dashboard."
+      }
+    ],
+    "modules": [
+      {
+        "file": "bin/bench.rs",
+        "loc": 166,
+        "desc": "The canonical perf harness, injected by the evaluator so throughput numbers can't be faked."
+      },
+      {
+        "file": "bin/headless.rs",
+        "loc": 54,
+        "desc": "The engine binary: reads commands on stdin, writes events on stdout \u2014 what the tests drive."
+      },
+      {
+        "file": "lib.rs",
+        "loc": 254,
+        "desc": "The Daw facade: owns mixer + transport + sample bank, turns protocol commands into events."
+      },
+      {
+        "file": "mixer.rs",
+        "loc": 253,
+        "desc": "Multitrack mixer: per-track gain + equal-power pan, master bus, stereo metering. (rung 3)"
+      },
+      {
+        "file": "protocol.rs",
+        "loc": 183,
+        "desc": "The JSON control protocol \u2014 the Command and Event wire types (serde-tagged NDJSON)."
+      },
+      {
+        "file": "samples.rs",
+        "loc": 166,
+        "desc": "Sample playback: named PCM buffers, one-shot / looped sample voices. (rung 4)"
+      },
+      {
+        "file": "synth.rs",
+        "loc": 81,
+        "desc": "Polyphonic sine-voice bank \u2014 the real-time DSP core that the perf harness benchmarks. (rung 1)"
+      },
+      {
+        "file": "transport.rs",
+        "loc": 57,
+        "desc": "Sample-accurate clock: tempo, play/stop, seek, position. (rung 2)"
+      }
+    ],
+    "engine_loc": 1214,
+    "protocol": {
+      "commands": [
+        "load",
+        "add_voice",
+        "clear_voices",
+        "load_sample",
+        "add_sample_voice",
+        "set_tempo",
+        "transport",
+        "add_track",
+        "set_track_gain",
+        "set_track_pan",
+        "set_master_gain",
+        "render",
+        "get_state",
+        "quit"
+      ],
+      "events": [
+        "ready",
+        "ok",
+        "error",
+        "track_added",
+        "sample_loaded",
+        "meter",
+        "state",
+        "bye"
+      ]
+    }
+  },
   "commits": [
     {
-      "hash": "232b595",
-      "subject": "Draft rung 4 contract + golden tests (sample playback)",
-      "date": "2026-06-23T15:51:30+00:00"
+      "hash": "18f70e5",
+      "subject": "Rung 4: sample playback (#18)",
+      "date": "2026-06-23T09:03:17-07:00"
     },
     {
       "hash": "fa2cc0d",
