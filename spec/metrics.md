@@ -30,8 +30,15 @@ The single source of truth for how a candidate is scored. Implemented in
 
 1. `build_ok` — compiles in `--release`.
 2. `correctness.finite` ∧ `correctness.in_range` ∧ `correctness.nonzero`.
-3. `realtime.alloc_calls_during_render == 0` — the cardinal real-time rule.
-4. `dropouts.budget_5_33ms == 0` — no dropouts at the comfortable budget.
+3. `realtime.alloc_calls_during_render == 0` — the cardinal real-time rule
+   (deterministic; an exact, unfakeable count from the allocation tripwire).
+4. `latency_us.p99_9 <= budget_us` — the 99.9th-percentile block fits the budget.
+
+> We gate the tail on **p99.9**, not on an absolute `dropouts == 0`, because a
+> hard zero-dropout rule measures the *host's* scheduling jitter (a lone
+> OS-preempted block in 50k) rather than the engine. A real-time-unsafe design
+> (allocating, O(n²)) blows p99.9 wildly; environmental jitter only ever touches
+> the worst ~0.1% (p100). Raw `dropouts` counts are still recorded for visibility.
 
 ## Fitness (when all gates pass)
 

@@ -1,0 +1,24 @@
+{
+  "name": "pan-hard-left",
+  "doc": "A track panned full-left puts signal in the left channel only (right ~ silent).",
+  "tolerance": 0.02,
+  "commands": [
+    {"cmd": "load"},
+    {"cmd": "add_track", "pan": -1.0},
+    {"cmd": "add_voice", "freq": 440.0, "track": 1},
+    {"cmd": "render", "blocks": 4, "id": 1},
+    {"cmd": "quit"}
+  ],
+  "expect": [
+    {"event": "ready"},
+    {"event": "ok"},
+    {"event": "track_added", "index": 1},
+    {"event": "ok"},
+    {"event": "meter", "voices": 1, "id": 1},
+    {"event": "bye"}
+  ],
+  "assert": [
+    {"path": "meter.peak_l", "min": 0.05},
+    {"path": "meter.peak_r", "max": 0.01}
+  ]
+}

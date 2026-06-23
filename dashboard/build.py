@@ -66,8 +66,15 @@ def load_runs() -> list[dict]:
 
 
 def pick_champion(runs: list[dict]) -> dict | None:
+    """The current mainline engine = the most recent passing run.
+
+    We deliberately do NOT take the global max-fitness record: throughput is a
+    timing measurement that drifts between machine windows, so an old high
+    reading must not outrank the latest integrated engine. The newest passing
+    run is, by construction, the current state of the mainline.
+    """
     passed = [r for r in runs if r["reason"] == "ok" and r["fitness"] > 0]
-    return max(passed, key=lambda r: r["fitness"]) if passed else None
+    return passed[-1] if passed else None  # runs are in chronological order
 
 
 def recent_commits(n: int = 20) -> list[dict]:

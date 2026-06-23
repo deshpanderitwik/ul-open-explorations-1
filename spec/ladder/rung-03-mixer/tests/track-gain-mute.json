@@ -1,0 +1,23 @@
+{
+  "name": "track-gain-mute",
+  "doc": "Setting a track's gain to 0 silences it even with a voice playing.",
+  "tolerance": 0.02,
+  "commands": [
+    {"cmd": "load"},
+    {"cmd": "add_voice", "freq": 440.0},
+    {"cmd": "set_track_gain", "track": 0, "gain": 0.0},
+    {"cmd": "render", "blocks": 4, "id": 1},
+    {"cmd": "quit"}
+  ],
+  "expect": [
+    {"event": "ready"},
+    {"event": "ok"},
+    {"event": "ok"},
+    {"event": "ok"},
+    {"event": "meter", "voices": 1, "id": 1},
+    {"event": "bye"}
+  ],
+  "assert": [
+    {"path": "meter.peak", "max": 0.001}
+  ]
+}

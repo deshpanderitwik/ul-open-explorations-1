@@ -16,9 +16,13 @@ pub enum Command {
     AddVoice {
         freq: f32,
         #[serde(default, skip_serializing_if = "Option::is_none")]
+        track: Option<u32>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
         id: Option<i64>,
     },
     ClearVoices {
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        track: Option<u32>,
         #[serde(default, skip_serializing_if = "Option::is_none")]
         id: Option<i64>,
     },
@@ -31,6 +35,31 @@ pub enum Command {
         action: String,
         #[serde(default, skip_serializing_if = "Option::is_none")]
         pos: Option<u64>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        id: Option<i64>,
+    },
+    AddTrack {
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        gain: Option<f32>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        pan: Option<f32>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        id: Option<i64>,
+    },
+    SetTrackGain {
+        track: u32,
+        gain: f32,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        id: Option<i64>,
+    },
+    SetTrackPan {
+        track: u32,
+        pan: f32,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        id: Option<i64>,
+    },
+    SetMasterGain {
+        gain: f32,
         #[serde(default, skip_serializing_if = "Option::is_none")]
         id: Option<i64>,
     },
@@ -65,10 +94,19 @@ pub enum Event {
         #[serde(default, skip_serializing_if = "Option::is_none")]
         id: Option<i64>,
     },
+    TrackAdded {
+        index: usize,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        id: Option<i64>,
+    },
     Meter {
         rms: f32,
         peak: f32,
         voices: usize,
+        rms_l: f32,
+        rms_r: f32,
+        peak_l: f32,
+        peak_r: f32,
         #[serde(default, skip_serializing_if = "Option::is_none")]
         id: Option<i64>,
     },
@@ -79,10 +117,22 @@ pub enum Event {
         playing: bool,
         position_samples: u64,
         voices: usize,
+        channels: u32,
+        master_gain: f32,
+        tracks: Vec<TrackInfo>,
         #[serde(default, skip_serializing_if = "Option::is_none")]
         id: Option<i64>,
     },
     Bye,
+}
+
+/// Per-track summary carried in the `state` event's `tracks` list.
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct TrackInfo {
+    pub index: usize,
+    pub gain: f32,
+    pub pan: f32,
+    pub voices: usize,
 }
 
 impl Command {
