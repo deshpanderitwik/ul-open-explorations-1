@@ -9,6 +9,7 @@
 //! accumulation buffers) is pre-allocated in `new`/`add_track`. `render_stereo`
 //! allocates nothing, takes no locks, does no I/O.
 
+use crate::samples::{PlayMode, SampleBank, SampleVoices};
 use crate::synth::Synth;
 
 use std::f32::consts::PI;
@@ -16,6 +17,8 @@ use std::f32::consts::PI;
 /// One mixer track: a voice bank plus its level and stereo position.
 pub struct Track {
     pub synth: Synth,
+    /// Sample-player voices on this track (rung 4).
+    pub samples: SampleVoices,
     /// Linear gain, default 1.0.
     pub gain: f32,
     /// Pan in [-1, 1]; -1 = full left, 0 = center, +1 = full right.
@@ -26,6 +29,7 @@ impl Track {
     fn new(sample_rate: f32, block_size: usize, gain: f32, pan: f32) -> Self {
         Track {
             synth: Synth::new(sample_rate, block_size),
+            samples: SampleVoices::new(),
             gain,
             pan: pan.clamp(-1.0, 1.0),
         }
@@ -45,6 +49,8 @@ pub struct Mixer {
     sample_rate: f32,
     block_size: usize,
     tracks: Vec<Track>,
+    /// Loaded PCM buffers shared by all sample voices (rung 4).
+    sample_bank: SampleBank,
     /// Master bus gain, applied last. Default 0.8.
     master_gain: f32,
     /// Pre-allocated per-track mono render buffer. Reused every block.
@@ -60,6 +66,7 @@ impl Mixer {
             sample_rate,
             block_size,
             tracks: Vec::new(),
+            sample_bank: SampleBank::new(),
             master_gain: 0.8,
             mono_scratch: vec![0.0; block_size],
             acc_l: vec![0.0; block_size],
@@ -71,9 +78,48 @@ impl Mixer {
     /// with `add_voice` and no explicit track keeps working).
     pub fn reset_default(&mut self) {
         self.tracks.clear();
+        self.sample_bank.clear();
         self.master_gain = 0.8;
         self.tracks
             .push(Track::new(self.sample_rate, self.block_size, 1.0, 0.0));
+    }
+
+    /// Load (or replace) a named PCM buffer. Setup-time only. Returns frames.
+    pub fn load_sample(&mut self, id: &str, data: Vec<f32>) -> usize {
+        self.sample_bank.load(id, data)
+    }
+
+    /// Route a sample voice to a track. Returns false if either the track index
+    /// or the sample id is unknown.
+    pub fn add_sample_voice(
+        &mut self,
+        track: usize,
+        sample: &str,
+        gain: f32,
+        mode: PlayMode,
+    ) -> bool {
+        let buffer = match self.sample_bank.index_of(sample) {
+            Some(i) => i,
+            None => return false,
+        };
+        match self.tracks.get_mut(track) {
+            Some(t) => {
+                t.samples.add(buffer, gain, mode);
+                true
+            }
+            None => false,
+        }
+    }
+
+    /// Whether a sample id is loaded (lets the caller distinguish an unknown
+    /// sample from an unknown track when adding a voice).
+    pub fn index_of_sample(&self, sample: &str) -> Option<usize> {
+        self.sample_bank.index_of(sample)
+    }
+
+    /// (id, frames) for each loaded buffer, for `get_state`.
+    pub fn samples_iter(&self) -> impl Iterator<Item = (&str, usize)> + '_ {
+        self.sample_bank.iter()
     }
 
     /// Add a track; returns its index. Setup-time only — allocation is fine here.
@@ -104,11 +150,13 @@ impl Mixer {
             Some(i) => {
                 if let Some(t) = self.tracks.get_mut(i) {
                     t.synth.clear();
+                    t.samples.clear();
                 }
             }
             None => {
                 for t in self.tracks.iter_mut() {
                     t.synth.clear();
+                    t.samples.clear();
                 }
             }
         }
@@ -142,9 +190,12 @@ impl Mixer {
         self.master_gain
     }
 
-    /// Total voice count across all tracks.
+    /// Total voice count across all tracks (synth + sample voices).
     pub fn total_voices(&self) -> usize {
-        self.tracks.iter().map(|t| t.synth.voice_count()).sum()
+        self.tracks
+            .iter()
+            .map(|t| t.synth.voice_count() + t.samples.count())
+            .sum()
     }
 
     /// Per-track summary for `get_state`.
@@ -152,7 +203,7 @@ impl Mixer {
         self.tracks
             .iter()
             .enumerate()
-            .map(|(i, t)| (i, t.gain, t.pan, t.synth.voice_count()))
+            .map(|(i, t)| (i, t.gain, t.pan, t.synth.voice_count() + t.samples.count()))
     }
 
     /// Render one stereo block into the pre-allocated L/R accumulators.
@@ -168,8 +219,12 @@ impl Mixer {
             *s = 0.0;
         }
 
+        let bank = &self.sample_bank;
         for track in self.tracks.iter_mut() {
+            // Synth renders mono (zeroing the buffer), then sample voices sum on
+            // top, so both voice kinds share the track's gain and pan law.
             track.synth.render(&mut self.mono_scratch);
+            track.samples.mix_into(&mut self.mono_scratch, bank);
             let (gl, gr) = track.channel_gains();
             for ((l, r), &m) in self
                 .acc_l

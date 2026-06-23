@@ -1,4 +1,4 @@
-# Rung 4 — sample playback  ← NEXT
+# Rung 4 — sample playback  ✅ DONE
 
 Give the engine a second kind of voice: a **sample player**. Until now every
 voice is a synthesized oscillator (rung 1). This rung lets a track play back

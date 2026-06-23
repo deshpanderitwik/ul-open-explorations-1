@@ -26,6 +26,23 @@ pub enum Command {
         #[serde(default, skip_serializing_if = "Option::is_none")]
         id: Option<i64>,
     },
+    LoadSample {
+        sample: String,
+        data: Vec<f32>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        id: Option<i64>,
+    },
+    AddSampleVoice {
+        sample: String,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        track: Option<u32>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        gain: Option<f32>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        mode: Option<String>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        id: Option<i64>,
+    },
     SetTempo {
         bpm: f32,
         #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -99,6 +116,12 @@ pub enum Event {
         #[serde(default, skip_serializing_if = "Option::is_none")]
         id: Option<i64>,
     },
+    SampleLoaded {
+        sample: String,
+        frames: usize,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        id: Option<i64>,
+    },
     Meter {
         rms: f32,
         peak: f32,
@@ -120,10 +143,18 @@ pub enum Event {
         channels: u32,
         master_gain: f32,
         tracks: Vec<TrackInfo>,
+        samples: Vec<SampleInfo>,
         #[serde(default, skip_serializing_if = "Option::is_none")]
         id: Option<i64>,
     },
     Bye,
+}
+
+/// Per-sample summary carried in the `state` event's `samples` list.
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct SampleInfo {
+    pub sample: String,
+    pub frames: usize,
 }
 
 /// Per-track summary carried in the `state` event's `tracks` list.

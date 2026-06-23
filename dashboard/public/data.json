@@ -1,16 +1,16 @@
 {
-  "generatedAt": "2026-06-23T06:36:58.908218+00:00",
+  "generatedAt": "2026-06-23T16:02:21.432825+00:00",
   "summit": "Mobile groovebox",
   "champion": {
     "id": "engine",
     "parent": null,
-    "ts": "2026-06-23T06:29:30.965370+00:00",
-    "fitness": 2066.979,
+    "ts": "2026-06-23T16:00:18.006778+00:00",
+    "fitness": 2212.966,
     "reason": "ok",
-    "voices_50pct": 2066,
-    "voices_full": 4092,
-    "mean_us": 83.018,
-    "p99_9_us": 111.431,
+    "voices_50pct": 2212,
+    "voices_full": 4449,
+    "mean_us": 83.066,
+    "p99_9_us": 180.915,
     "alloc": 0,
     "dropouts": 0
   },
@@ -40,6 +40,19 @@
       "p99_9_us": 111.431,
       "alloc": 0,
       "dropouts": 0
+    },
+    {
+      "id": "engine",
+      "parent": null,
+      "ts": "2026-06-23T16:00:18.006778+00:00",
+      "fitness": 2212.966,
+      "reason": "ok",
+      "voices_50pct": 2212,
+      "voices_full": 4449,
+      "mean_us": 83.066,
+      "p99_9_us": 180.915,
+      "alloc": 0,
+      "dropouts": 0
     }
   ],
   "ladder": {
@@ -66,13 +79,13 @@
       {
         "n": 4,
         "title": "Sample playback",
-        "status": "next",
+        "status": "done",
         "summary": "Load PCM, one-shot + looped sample voices."
       },
       {
         "n": 5,
         "title": "Step sequencer",
-        "status": "todo",
+        "status": "next",
         "summary": "Pattern grid firing samples on the clock."
       },
       {
@@ -141,9 +154,14 @@
   },
   "commits": [
     {
-      "hash": "4b57219",
-      "subject": "Architect: define rung 3 (mixer) contract + golden tests",
-      "date": "2026-06-23T06:08:56+00:00"
+      "hash": "232b595",
+      "subject": "Draft rung 4 contract + golden tests (sample playback)",
+      "date": "2026-06-23T15:51:30+00:00"
+    },
+    {
+      "hash": "fa2cc0d",
+      "subject": "Rung 3: stereo multitrack mixer (#17)",
+      "date": "2026-06-22T23:37:45-07:00"
     },
     {
       "hash": "cc561cb",
@@ -234,18 +252,13 @@
       "hash": "f54bd02",
       "subject": "daw-lab: Experiment 3 \u2014 the worst-case rig (tail latency, the choke, why no alloc)",
       "date": "2026-06-17T19:04:39+00:00"
-    },
-    {
-      "hash": "877fe33",
-      "subject": "sketches: expand the Experiment 2 narrative in the microsite (#2)",
-      "date": "2026-06-17T11:53:33-07:00"
     }
   ],
   "stats": {
-    "total_runs": 2,
-    "passed": 2,
+    "total_runs": 3,
+    "passed": 3,
     "rejected": 0,
-    "rungs_done": 3,
+    "rungs_done": 4,
     "rungs_total": 10
   }
 }

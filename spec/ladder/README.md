@@ -32,8 +32,8 @@ a step sequencer, a mixer, transport. Rungs:
 | 1 | **synth / voice core** | polyphonic sine voices, real-time-safe render, throughput | ✅ done (gen-1) |
 | 2 | **transport & clock** | sample-accurate tempo/play/stop/seek/position | ✅ done |
 | 3 | **mixer** | multitrack gain/pan/sum, master bus, stereo meters | ✅ done |
-| 4 | **sample playback** | load PCM, one-shot + looped sample voices, real-time-safe streaming | ← next |
-| 5 | **step sequencer** | pattern grid (steps × tracks) firing samples on the clock | |
+| 4 | **sample playback** | load PCM, one-shot + looped sample voices, real-time-safe streaming | ✅ done |
+| 5 | **step sequencer** | pattern grid (steps × tracks) firing samples on the clock | ← next |
 | 6 | **effects chain** | insert-node interface + a few nodes (gain/filter/delay) | |
 | 7 | **record & quantize** | capture taps into pattern steps on the grid | |
 | 8 | **persistence** | save/load project (patterns, mixer, sample refs) | |
