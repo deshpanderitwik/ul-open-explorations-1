@@ -1,0 +1,26 @@
+{
+  "name": "one-shot-finishes",
+  "doc": "A one-shot sample plays once (sound comes out), then the voice is gone: after a block long enough to exhaust the 64-frame buffer, state reports 0 voices.",
+  "tolerance": 0.02,
+  "commands": [
+    {"cmd": "load"},
+    {"cmd": "load_sample", "sample": "blip", "data": [0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8]},
+    {"cmd": "add_sample_voice", "sample": "blip"},
+    {"cmd": "render", "blocks": 1, "id": 1},
+    {"cmd": "get_state", "id": 2},
+    {"cmd": "quit"}
+  ],
+  "expect": [
+    {"event": "ready"},
+    {"event": "ok"},
+    {"event": "sample_loaded", "sample": "blip", "frames": 64},
+    {"event": "ok"},
+    {"event": "meter", "id": 1},
+    {"event": "state", "voices": 0, "id": 2},
+    {"event": "bye"}
+  ],
+  "assert": [
+    {"path": "meter.peak_l", "min": 0.05},
+    {"path": "meter.peak_l", "max": 1.5}
+  ]
+}
