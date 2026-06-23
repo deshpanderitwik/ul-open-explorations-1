@@ -1,0 +1,26 @@
+{
+  "name": "loop-continues",
+  "doc": "A looped sample never exhausts: across 8 blocks (far longer than the 32-frame buffer) it keeps producing sound and stays counted as an active voice.",
+  "tolerance": 0.02,
+  "commands": [
+    {"cmd": "load"},
+    {"cmd": "load_sample", "sample": "lp", "data": [0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5]},
+    {"cmd": "add_sample_voice", "sample": "lp", "mode": "loop"},
+    {"cmd": "render", "blocks": 8, "id": 1},
+    {"cmd": "get_state", "id": 2},
+    {"cmd": "quit"}
+  ],
+  "expect": [
+    {"event": "ready"},
+    {"event": "ok"},
+    {"event": "sample_loaded", "sample": "lp", "frames": 32},
+    {"event": "ok"},
+    {"event": "meter", "id": 1},
+    {"event": "state", "voices": 1, "id": 2},
+    {"event": "bye"}
+  ],
+  "assert": [
+    {"path": "meter.peak_l", "min": 0.05},
+    {"path": "meter.peak_l", "max": 1.5}
+  ]
+}

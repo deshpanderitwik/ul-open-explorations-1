@@ -1,4 +1,4 @@
-# Rung 3 — mixer  ← NEXT
+# Rung 3 — mixer  ✅ DONE
 
 Turn the engine from a single voice bank into a **multitrack mixer**: several
 independent tracks, each with its own level and stereo position, summed through a

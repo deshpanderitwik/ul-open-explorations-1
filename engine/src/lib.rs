@@ -2,11 +2,13 @@
 
 pub mod mixer;
 pub mod protocol;
+pub mod samples;
 pub mod synth;
 pub mod transport;
 
 use mixer::Mixer;
-use protocol::{Command, Event, TrackInfo};
+use protocol::{Command, Event, SampleInfo, TrackInfo};
+use samples::PlayMode;
 use transport::Transport;
 
 // Public re-export: the core synth type the perf harness and FFI/UI consumers use.
@@ -64,6 +66,56 @@ impl Daw {
             Command::ClearVoices { track, id } => {
                 self.mixer.clear_voices(track.map(|t| t as usize));
                 vec![Event::Ok { id }]
+            }
+            Command::LoadSample { sample, data, id } => {
+                if data.is_empty() {
+                    vec![Event::Error {
+                        message: format!("empty sample data: {sample}"),
+                        id,
+                    }]
+                } else {
+                    let frames = self.mixer.load_sample(&sample, data);
+                    vec![Event::SampleLoaded {
+                        sample,
+                        frames,
+                        id,
+                    }]
+                }
+            }
+            Command::AddSampleVoice {
+                sample,
+                track,
+                gain,
+                mode,
+                id,
+            } => {
+                let t = track.unwrap_or(0) as usize;
+                let mode = match mode.as_deref() {
+                    None | Some("one_shot") => PlayMode::OneShot,
+                    Some("loop") => PlayMode::Loop,
+                    Some(other) => {
+                        return vec![Event::Error {
+                            message: format!("unknown sample mode: {other}"),
+                            id,
+                        }];
+                    }
+                };
+                if self.mixer.index_of_sample(&sample).is_none() {
+                    vec![Event::Error {
+                        message: format!("no such sample: {sample}"),
+                        id,
+                    }]
+                } else if self
+                    .mixer
+                    .add_sample_voice(t, &sample, gain.unwrap_or(1.0), mode)
+                {
+                    vec![Event::Ok { id }]
+                } else {
+                    vec![Event::Error {
+                        message: format!("no such track: {t}"),
+                        id,
+                    }]
+                }
             }
             Command::SetTempo { bpm, id } => {
                 self.transport.set_tempo(bpm);
@@ -174,6 +226,14 @@ impl Daw {
                         voices,
                     })
                     .collect();
+                let samples: Vec<SampleInfo> = self
+                    .mixer
+                    .samples_iter()
+                    .map(|(sample, frames)| SampleInfo {
+                        sample: sample.to_string(),
+                        frames,
+                    })
+                    .collect();
                 vec![Event::State {
                     sample_rate: self.sample_rate,
                     block_size: self.block_size,
@@ -184,6 +244,7 @@ impl Daw {
                     channels: 2,
                     master_gain: self.mixer.master_gain(),
                     tracks,
+                    samples,
                     id,
                 }]
             }
