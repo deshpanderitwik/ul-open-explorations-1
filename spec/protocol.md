@@ -33,11 +33,15 @@ acknowledging event so clients can correlate.
 
 | cmd | fields | rung | effect |
 |---|---|---|---|
-| `load` | — | 1 | reset the engine to an empty project |
-| `add_voice` | `freq` (f32) | 1 | add a sine voice |
-| `clear_voices` | — | 1 | remove all voices |
+| `load` | — | 1 | reset the engine to an empty project (creates default track 0) |
+| `add_voice` | `freq` (f32), `track`? (u32, default 0) | 1 | add a sine voice to a track |
+| `clear_voices` | `track`? (u32; omitted = all) | 1 | remove voices |
 | `set_tempo` | `bpm` (f32) | 2 | set transport tempo |
 | `transport` | `action` ("play"/"stop"/"seek"), `pos`? (samples) | 2 | drive the clock |
+| `add_track` | `gain`? (f32, default 1.0), `pan`? (f32 [-1,1], default 0) | 3 | add a mixer track; emits `track_added` |
+| `set_track_gain` | `track` (u32), `gain` (f32) | 3 | set a track's linear gain |
+| `set_track_pan` | `track` (u32), `pan` (f32 [-1,1]) | 3 | set a track's stereo pan |
+| `set_master_gain` | `gain` (f32) | 3 | set the master bus gain |
 | `render` | `blocks` (u32) | 1 | render N audio blocks; emit a `meter` |
 | `get_state` | — | 1 | emit current `state` |
 | `quit` | — | 1 | shut down (emits `bye`) |
@@ -49,8 +53,9 @@ acknowledging event so clients can correlate.
 | `ready` | `version` | emitted once at startup |
 | `ok` | `id`? | command acknowledged |
 | `error` | `message`, `id`? | command rejected (unknown cmd, bad args) |
-| `meter` | `rms`, `peak`, `voices` | post-render level summary |
-| `state` | `sample_rate`, `block_size`, `tempo_bpm`, `playing`, `position_samples`, `voices` | full engine state |
+| `track_added` | `index`, `id`? | a mixer track was created (rung 3) |
+| `meter` | `rms`, `peak`, `voices`, `rms_l`, `rms_r`, `peak_l`, `peak_r` | post-render level summary; `rms`/`peak` are the max across channels (rung 3 added the per-channel fields) |
+| `state` | `sample_rate`, `block_size`, `tempo_bpm`, `playing`, `position_samples`, `voices`, `channels`, `master_gain`, `tracks` | full engine state; `channels`/`master_gain`/`tracks` added in rung 3. `tracks` is a list of `{index, gain, pan, voices}` |
 | `bye` | — | shutting down |
 
 ## Determinism (why golden tests work)

@@ -1,0 +1,18 @@
+{
+  "name": "state-stereo",
+  "doc": "A second track gets index 1; state reports stereo output and the master gain.",
+  "tolerance": 0.02,
+  "commands": [
+    {"cmd": "load"},
+    {"cmd": "add_track", "gain": 0.5, "pan": 0.25},
+    {"cmd": "get_state", "id": 1},
+    {"cmd": "quit"}
+  ],
+  "expect": [
+    {"event": "ready"},
+    {"event": "ok"},
+    {"event": "track_added", "index": 1},
+    {"event": "state", "channels": 2, "master_gain": 0.8, "id": 1},
+    {"event": "bye"}
+  ]
+}
