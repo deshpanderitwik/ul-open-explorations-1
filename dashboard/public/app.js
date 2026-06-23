@@ -392,6 +392,103 @@ function renderTable(data) {
   return section;
 }
 
+/* ---------------- codebase tab ---------------- */
+
+// Static framing copy (the methodology is stable); the facts below it are live.
+const CODEBASE_INTRO = [
+  "This isn't one big program a model wrote in a sitting. It's a small engine that <strong>grows one rung at a time</strong>, and most of the repo exists to make that growth safe and legible.",
+  "Each rung is a contract with golden tests. A <strong>swarm</strong> of agents each writes a candidate implementation in isolation; an <strong>evaluator</strong> the agents can't touch scores them on correctness and real-time performance; the winner is merged into <code>engine/</code> and the next rung opens. The full regression suite is the ratchet — progress accumulates, it never silently breaks.",
+  "Everything below is read straight from the source on each build, so it stays honest as the engine climbs.",
+];
+
+function pill(text, kind) {
+  return el("span", { class: "pill" + (kind ? " " + kind : ""), text: text });
+}
+
+function renderCodebase(data) {
+  const cb = data.codebase || {};
+  const frag = document.createDocumentFragment();
+
+  /* intro / methodology */
+  const intro = el("section");
+  intro.appendChild(el("div", { class: "section-head" }, [
+    el("h2", { text: "How this codebase works" }),
+  ]));
+  const introCard = el("div", { class: "card prose" });
+  for (const para of CODEBASE_INTRO) introCard.appendChild(el("p", { html: para }));
+  intro.appendChild(introCard);
+  frag.appendChild(intro);
+
+  /* repository map */
+  const map = Array.isArray(cb.repo_map) ? cb.repo_map : [];
+  if (map.length) {
+    const s = el("section");
+    s.appendChild(el("div", { class: "section-head" }, [
+      el("h2", { text: "Repository map" }),
+    ]));
+    const list = el("ul", { class: "repo-map card" });
+    for (const e of map) {
+      list.appendChild(el("li", { class: "repo-row" }, [
+        el("code", { class: "repo-path", text: e.path }),
+        el("span", { class: "repo-desc", text: e.desc || "" }),
+      ]));
+    }
+    s.appendChild(list);
+    frag.appendChild(s);
+  }
+
+  /* engine modules (live: file + LOC + one-liner) */
+  const mods = Array.isArray(cb.modules) ? cb.modules : [];
+  if (mods.length) {
+    const s = el("section");
+    s.appendChild(el("div", { class: "section-head" }, [
+      el("h2", { text: "Engine modules" }),
+      el("span", { class: "sub", text: fmt(cb.engine_loc) + " lines of Rust · " + mods.length + " files" }),
+    ]));
+    const list = el("ul", { class: "modules card" });
+    for (const m of mods) {
+      list.appendChild(el("li", { class: "module-row" }, [
+        el("code", { class: "mod-file", text: m.file }),
+        el("span", { class: "mod-desc", text: m.desc || "—" }),
+        el("span", { class: "mod-loc", text: fmt(m.loc) + " loc" }),
+      ]));
+    }
+    s.appendChild(list);
+    frag.appendChild(s);
+  }
+
+  /* control protocol surface (live from protocol.rs) */
+  const proto = cb.protocol || {};
+  const cmds = Array.isArray(proto.commands) ? proto.commands : [];
+  const evts = Array.isArray(proto.events) ? proto.events : [];
+  if (cmds.length || evts.length) {
+    const s = el("section");
+    s.appendChild(el("div", { class: "section-head" }, [
+      el("h2", { text: "Control protocol" }),
+      el("span", { class: "sub", text: "the engine speaks one JSON object per line" }),
+    ]));
+    const card = el("div", { class: "card proto" });
+    card.appendChild(el("div", { class: "proto-group" }, [
+      el("div", { class: "proto-label" }, [
+        document.createTextNode("Commands in"),
+        el("span", { class: "proto-count", text: String(cmds.length) }),
+      ]),
+      el("div", { class: "pills" }, cmds.map((c) => pill(c, "cmd"))),
+    ]));
+    card.appendChild(el("div", { class: "proto-group" }, [
+      el("div", { class: "proto-label" }, [
+        document.createTextNode("Events out"),
+        el("span", { class: "proto-count", text: String(evts.length) }),
+      ]),
+      el("div", { class: "pills" }, evts.map((e) => pill(e, "evt"))),
+    ]));
+    s.appendChild(card);
+    frag.appendChild(s);
+  }
+
+  return frag;
+}
+
 function renderCommits(data) {
   const commits = Array.isArray(data.commits) ? data.commits : [];
   const section = el("section");
@@ -418,15 +515,45 @@ function renderCommits(data) {
 
 /* ---------------- orchestration ---------------- */
 
-function render(data) {
-  renderHeader(data);
+let lastData = null;       // keep the latest payload so tab switches don't refetch
+let currentView = "overview";
+
+function renderView(view, data) {
   const content = document.getElementById("content");
   clear(content);
+  if (view === "codebase") {
+    content.appendChild(renderCodebase(data));
+    return;
+  }
   content.appendChild(renderChampion(data));
   content.appendChild(renderLadder(data));
   content.appendChild(renderChart(data));
   content.appendChild(renderTable(data));
   content.appendChild(renderCommits(data));
+}
+
+function render(data) {
+  lastData = data;
+  renderHeader(data);
+  renderView(currentView, data);
+}
+
+function initTabs() {
+  const tabs = document.getElementById("tabs");
+  if (!tabs) return;
+  tabs.addEventListener("click", (ev) => {
+    const btn = ev.target.closest(".tab");
+    if (!btn) return;
+    const view = btn.getAttribute("data-view");
+    if (!view || view === currentView) return;
+    currentView = view;
+    for (const t of tabs.querySelectorAll(".tab")) {
+      const active = t === btn;
+      t.classList.toggle("is-active", active);
+      t.setAttribute("aria-selected", active ? "true" : "false");
+    }
+    if (lastData) renderView(currentView, lastData);
+  });
 }
 
 function renderError(err) {
@@ -455,5 +582,6 @@ async function load() {
   }
 }
 
+initTabs();
 load();
 setInterval(load, REFRESH_MS);
