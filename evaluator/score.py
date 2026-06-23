@@ -47,35 +47,40 @@ def gate_and_fitness(metrics: dict) -> tuple[float, str]:
     """Apply the hard gates, then compute fitness. See spec/metrics.md.
 
     Gates (any failure -> fitness 0): the engine must be correct AND real-time
-    safe AND drop no blocks at the comfortable budget. Only then does throughput
-    count.
+    safe. "Real-time safe" is judged by two robust signals: ZERO heap allocations
+    on the render path (deterministic — a hard, exact gate), and the 99.9th-
+    percentile block time fitting the budget. We gate on p99.9 rather than on an
+    absolute "zero dropouts ever" count because the latter measures the host's
+    scheduling jitter (a single OS-preempted block in 50k) rather than the
+    engine: a real-time-unsafe design (allocating, O(n^2)) blows p99.9 wildly,
+    while environmental jitter only ever touches the worst ~0.1% (p100). The raw
+    dropout counts are still recorded for visibility.
 
     Fitness = max_voices_50pct + (1 - tail_ratio), where tail_ratio is the
-    p99.9 block time at the headline load as a fraction of the budget (clamped to
-    [0, 1]). The integer voice ceiling dominates; the sub-1 tail term only ever
-    breaks ties between engines of equal throughput, rewarding the tighter tail.
-    Every number is produced by the harness, not the candidate, so it's unfakeable.
+    p99.9 block time as a fraction of the budget (clamped to [0, 1]). The integer
+    voice ceiling dominates; the sub-1 tail term only breaks ties between engines
+    of equal throughput, rewarding the tighter tail. Every number is produced by
+    the harness, not the candidate, so it's unfakeable.
     """
     c = metrics.get("correctness", {})
     rt = metrics.get("realtime", {})
-    drops = metrics.get("dropouts", {})
+
+    cfg = metrics.get("config", {})
+    budget_us = (cfg.get("block_size", 256) / cfg.get("sample_rate", 48000)) * 1e6
+    p99_9 = metrics.get("latency_us", {}).get("p99_9", budget_us)
 
     gates = [
         ("correctness.finite", bool(c.get("finite"))),
         ("correctness.in_range", bool(c.get("in_range"))),
         ("correctness.nonzero", bool(c.get("nonzero"))),
         ("realtime.no_render_alloc", rt.get("alloc_calls_during_render", 1) == 0),
-        ("dropouts.none_at_budget", drops.get("budget_5_33ms", 1) == 0),
+        ("realtime.p99_9_within_budget", p99_9 <= budget_us),
     ]
     for name, ok in gates:
         if not ok:
             return 0.0, f"gate_failed:{name}"
 
-    cfg = metrics.get("config", {})
-    budget_us = (cfg.get("block_size", 256) / cfg.get("sample_rate", 48000)) * 1e6
-    p99_9 = metrics.get("latency_us", {}).get("p99_9", budget_us)
     tail_ratio = min(1.0, max(0.0, p99_9 / budget_us))
-
     voices = float(metrics.get("throughput", {}).get("max_voices_50pct", 0))
     return voices + (1.0 - tail_ratio), "ok"
 

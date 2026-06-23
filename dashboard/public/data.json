@@ -1,16 +1,16 @@
 {
-  "generatedAt": "2026-06-22T21:43:02.925104+00:00",
+  "generatedAt": "2026-06-23T06:36:58.908218+00:00",
   "summit": "Mobile groovebox",
   "champion": {
     "id": "engine",
-    "parent": "mainline",
-    "ts": "2026-06-21T22:13:48.527452+00:00",
-    "fitness": 2257.979,
+    "parent": null,
+    "ts": "2026-06-23T06:29:30.965370+00:00",
+    "fitness": 2066.979,
     "reason": "ok",
-    "voices_50pct": 2257,
-    "voices_full": 4596,
-    "mean_us": 73.183,
-    "p99_9_us": 114.653,
+    "voices_50pct": 2066,
+    "voices_full": 4092,
+    "mean_us": 83.018,
+    "p99_9_us": 111.431,
     "alloc": 0,
     "dropouts": 0
   },
@@ -25,6 +25,19 @@
       "voices_full": 4596,
       "mean_us": 73.183,
       "p99_9_us": 114.653,
+      "alloc": 0,
+      "dropouts": 0
+    },
+    {
+      "id": "engine",
+      "parent": null,
+      "ts": "2026-06-23T06:29:30.965370+00:00",
+      "fitness": 2066.979,
+      "reason": "ok",
+      "voices_50pct": 2066,
+      "voices_full": 4092,
+      "mean_us": 83.018,
+      "p99_9_us": 111.431,
       "alloc": 0,
       "dropouts": 0
     }
@@ -47,13 +60,13 @@
       {
         "n": 3,
         "title": "Mixer",
-        "status": "next",
-        "summary": "Multitrack gain/pan/sum, master bus, meters."
+        "status": "done",
+        "summary": "Multitrack gain/pan/sum, master bus, stereo meters."
       },
       {
         "n": 4,
         "title": "Sample playback",
-        "status": "todo",
+        "status": "next",
         "summary": "Load PCM, one-shot + looped sample voices."
       },
       {
@@ -127,6 +140,16 @@
     ]
   },
   "commits": [
+    {
+      "hash": "4b57219",
+      "subject": "Architect: define rung 3 (mixer) contract + golden tests",
+      "date": "2026-06-23T06:08:56+00:00"
+    },
+    {
+      "hash": "cc561cb",
+      "subject": "Fix dashboard publishing: serve via branch-mode Pages (#16)",
+      "date": "2026-06-22T14:44:20-07:00"
+    },
     {
       "hash": "7c92049",
       "subject": "Pages: self-enable, no manual setup (#15)",
@@ -216,23 +239,13 @@
       "hash": "877fe33",
       "subject": "sketches: expand the Experiment 2 narrative in the microsite (#2)",
       "date": "2026-06-17T11:53:33-07:00"
-    },
-    {
-      "hash": "cc9e0a1",
-      "subject": "sketches: expand Experiment 2 narrative in the engine-so-far microsite",
-      "date": "2026-06-17T18:53:13+00:00"
-    },
-    {
-      "hash": "36f14e3",
-      "subject": "sketches: add 'The engine so far' \u2014 interactive microsite for the daw-lab journey",
-      "date": "2026-06-17T15:34:26+00:00"
     }
   ],
   "stats": {
-    "total_runs": 1,
-    "passed": 1,
+    "total_runs": 2,
+    "passed": 2,
     "rejected": 0,
-    "rungs_done": 2,
+    "rungs_done": 3,
     "rungs_total": 10
   }
 }
